@@ -1,8 +1,8 @@
 """Alembic migration tests.
 
 Run against the test-services Postgres (see tests/integration/conftest.py).
-``alembic upgrade head`` must succeed on an empty schema; after the baseline
-only alembic_version should exist, and migration roundtrips are reversible.
+``alembic upgrade head`` must succeed on an empty schema; Phase 2 creates
+``artifacts`` and ``systems`` in addition to ``alembic_version``.
 """
 
 from __future__ import annotations
@@ -55,9 +55,7 @@ def test_empty_schema_upgrades_to_head(ready_dependencies, test_env):
 def test_database_schema_has_only_alembic_version_table(ready_dependencies, test_env):
     engine = create_engine(os.environ["DATABASE_URL"])
     tables = inspect(engine).get_table_names()
-    assert tables == ["alembic_version"], (
-        "Only alembic_version should exist after the empty baseline."
-    )
+    assert set(tables) == {"alembic_version", "artifacts", "systems"}
 
 
 def test_migration_roundtrip_is_reversible(ready_dependencies, test_env):
@@ -81,7 +79,7 @@ def test_upgrade_followed_by_migration_state(clean_database, test_env):
     assert _run_alembic("upgrade", "head").returncode == 0
     engine = create_engine(os.environ["DATABASE_URL"])
     tables = inspect(engine).get_table_names()
-    assert tables == ["alembic_version"]
+    assert set(tables) == {"alembic_version", "artifacts", "systems"}
     current, head = _read_current_head(os.environ["DATABASE_URL"])
     assert current == head
 

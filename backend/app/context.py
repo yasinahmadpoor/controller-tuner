@@ -23,6 +23,9 @@ class AppContext:
     manual: dict[str, Any] = field(default_factory=dict)
     ga: dict[str, Any] = field(default_factory=dict)
     engines_loaded: bool = False
+    catalog: Any = None
+    system_service: Any = None
+    cleanup_service: Any = None
 
     def check_engine(self) -> bool:
         return self.engines_loaded

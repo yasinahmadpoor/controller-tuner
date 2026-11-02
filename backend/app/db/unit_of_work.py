@@ -5,45 +5,29 @@ from contextlib import contextmanager
 
 from sqlalchemy.orm import Session, sessionmaker
 
-
-class BaseRepository:
-    """Base class for repositories bound to a Session."""
-
-    def __init__(self, session: Session):
-        self.session = session
+from app.db.repositories import ArtifactRepository, SystemRepository
 
 
-class SystemRepository(BaseRepository):
-    """Persists and queries canonical system metadata (Phase 2)."""
-
-
-class ArtifactRepository(BaseRepository):
-    """Persists code/artifact metadata (content-addressed, Phase 2)."""
-
-
-class RunRepository(BaseRepository):
+class RunRepository:
     """Persists simulation and optimization runs (Phases 3/4)."""
 
 
-class JobRepository(BaseRepository):
+class JobRepository:
     """Persists async job records (Phase 7)."""
 
 
 class UnitOfWork:
     """One transactional scope per request or Celery task.
 
-    Repositories are wired here in Phase 1 so later phases only add queries —
-    every repository shares one Session, letting a service commit related
-    changes atomically (e.g. artifact row + system row).
+    Repositories are wired here so services can commit related changes
+    atomically (e.g. artifact row + system row).
     """
 
     def __init__(self, session_factory: sessionmaker[Session]):
         self._session_factory = session_factory
         self.session: Session | None = None
-        self.systems = SystemRepository
-        self.artifacts = ArtifactRepository
-        self.runs = RunRepository
-        self.jobs = JobRepository
+        self.systems: SystemRepository | None = None
+        self.artifacts: ArtifactRepository | None = None
 
     def __enter__(self) -> UnitOfWork:
         self.session = self._session_factory()
@@ -53,8 +37,6 @@ class UnitOfWork:
     def _bind_repositories(self, session: Session) -> None:
         self.systems = SystemRepository(session)
         self.artifacts = ArtifactRepository(session)
-        self.runs = RunRepository(session)
-        self.jobs = JobRepository(session)
 
     def commit(self) -> None:
         if self.session is not None:

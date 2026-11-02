@@ -49,6 +49,22 @@ class TargetRange(BaseModel):
         return self
 
 
+class CatalogEntryResponse(BaseModel):
+    catalog_id: str
+    name: str
+    description: str | None = None
+    objective: str | None = None
+    num_states: int
+    num_inputs: int
+    target: float
+    capabilities: list[Capability]
+    sources: dict[str, str]
+
+
+class CatalogResponse(BaseModel):
+    items: list[CatalogEntryResponse]
+
+
 class CreateSystemRequest(BaseModel):
     source: dict[str, Any]
 

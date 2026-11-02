@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.error_handlers import register_error_handlers
 from app.api.middleware import add_middleware as add_request_id_middleware
 from app.api.v1 import health as health_router
+from app.api.v1 import systems as systems_router
 from app.context import AppContext
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging, get_logger
@@ -19,10 +20,13 @@ from app.domain.models import Capability
 from app.infrastructure.redis import RedisClients, close_redis
 from app.infrastructure.storage import create_storage
 from app.infrastructure.storage.base import ArtifactStorage
+from app.services.catalog_service import CatalogService
+from app.services.cleanup_service import CleanupService
+from app.services.system_service import SystemService
 
 logger = get_logger(__name__)
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT / "backend") not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / "backend"))
 
@@ -51,6 +55,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         context.engines_loaded = False
         logger.error("engine_load_failed", error=str(exc))
 
+    if context.cleanup_service is not None:
+        try:
+            context.cleanup_service.sweep_expired()
+        except Exception as exc:
+            logger.warning("startup_cleanup_failed", error=str(exc))
+
     try:
         yield
     finally:
@@ -69,6 +79,16 @@ def build_context(settings: Settings) -> AppContext:
     context = AppContext(settings=settings, redis=RedisClients(settings), storage=storage)
     context.engine = engine
     context.session_factory = session_factory
+    context.catalog = CatalogService(repo_root=_REPO_ROOT)
+    context.system_service = SystemService(
+        session_factory=session_factory,
+        storage=storage,
+        storage_backend=settings.artifact_backend,
+        catalog=context.catalog,
+        max_upload_bytes=settings.max_upload_bytes,
+        system_ttl_seconds=settings.system_ttl_seconds,
+    )
+    context.cleanup_service = CleanupService(system_service=context.system_service)
     return context
 
 
@@ -93,6 +113,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     add_request_id_middleware(app)
     register_error_handlers(app)
     app.include_router(health_router.router, prefix="/api/v1")
+    app.include_router(systems_router.router, prefix="/api/v1")
 
     @app.get("/api/v1/capabilities", tags=["meta"])
     def capabilities() -> dict[str, list[str]]:

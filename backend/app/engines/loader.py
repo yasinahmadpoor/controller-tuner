@@ -151,3 +151,24 @@ def reset_engines() -> None:
                 sys.modules.pop(name, None)
             if name == "src" or name.startswith("src."):
                 sys.modules.pop(name, None)
+
+
+def load_dynamics_from_code(code: str, num_inputs: int = 1) -> Any:
+    """Materialize user ``dynamics`` code to a temp file and load it via the
+    manual engine.
+
+    The manual engine auto-detects ``num_states`` by probing the function;
+    this is the canonical way to validate and introspect uploaded code.
+    Returns the ``DynamicalSystem`` instance (engine-managed lifetime).
+    """
+    import tempfile
+
+    com = manual()
+    DynamicalSystem = com["DynamicalSystem"]
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".py", encoding="utf-8", delete=False) as tmp:
+        tmp.write(code)
+        tmp_path = tmp.name
+    try:
+        return DynamicalSystem(tmp_path, num_inputs=num_inputs)
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
