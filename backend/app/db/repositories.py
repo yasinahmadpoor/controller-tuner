@@ -8,6 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.artifact import ArtifactModel
+from app.db.models.simulation_run import SimulationRunModel
 from app.db.models.system import SystemModel
 
 
@@ -129,14 +130,95 @@ class ArtifactRepository(BaseRepository):
         )
 
     def delete_unreferenced(self) -> list[ArtifactModel]:
-        """Delete artifact rows with no referencing system; returns deleted rows."""
-        orphans = list(
-            self.session.scalars(
-                select(ArtifactModel).where(
-                    ArtifactModel.id.not_in(select(SystemModel.artifact_id))
-                )
+        """Delete artifact rows with no referencing system or run; return rows."""
+        referenced = select(SystemModel.artifact_id).union(
+            select(SimulationRunModel.trajectory_artifact_id).where(
+                SimulationRunModel.trajectory_artifact_id.is_not(None)
             )
+        )
+        orphans = list(
+            self.session.scalars(select(ArtifactModel).where(ArtifactModel.id.not_in(referenced)))
         )
         for artifact in orphans:
             self.session.delete(artifact)
         return orphans
+
+
+class SimulationRunRepository(BaseRepository):
+    """Persistence for manual simulation history (Phase 3)."""
+
+    def create(
+        self,
+        *,
+        system_id: UUID,
+        controller_type: str,
+        params: dict[str, Any],
+        request: dict[str, Any] | None = None,
+        overrides: dict[str, Any] | None = None,
+        initial_state: list[float] | None = None,
+        seed: int | None = None,
+        engine: str = "manual_tuner",
+        status: str = "succeeded",
+        metrics: dict[str, Any] | None = None,
+        non_finite_metrics: list[str] | None = None,
+        warnings: list[str] | None = None,
+        error: dict[str, Any] | None = None,
+        trajectory_artifact_id: UUID | None = None,
+        duration_ms: int | None = None,
+        expires_at: datetime | None = None,
+    ) -> SimulationRunModel:
+        run = SimulationRunModel(
+            id=uuid4(),
+            system_id=system_id,
+            controller_type=controller_type,
+            request=request or {},
+            params=params,
+            overrides=overrides or {},
+            initial_state=initial_state,
+            seed=seed,
+            engine=engine,
+            status=status,
+            metrics=metrics or {},
+            non_finite_metrics=non_finite_metrics or [],
+            warnings=warnings or [],
+            error=error,
+            trajectory_artifact_id=trajectory_artifact_id,
+            duration_ms=duration_ms,
+            created_at=datetime.now(UTC),
+            expires_at=expires_at,
+        )
+        self.session.add(run)
+        return run
+
+    def get(self, run_id: UUID) -> SimulationRunModel | None:
+        return self.session.get(SimulationRunModel, run_id)
+
+    def list(
+        self,
+        *,
+        system_id: UUID | None = None,
+        limit: int = 20,
+        offset: int = 0,
+        status: str | None = None,
+    ) -> tuple[list[SimulationRunModel], int]:
+        stmt = select(SimulationRunModel)
+        if system_id is not None:
+            stmt = stmt.where(SimulationRunModel.system_id == system_id)
+        if status is not None:
+            stmt = stmt.where(SimulationRunModel.status == status)
+        stmt = stmt.order_by(SimulationRunModel.created_at.desc(), SimulationRunModel.id)
+        total = self.session.scalar(
+            select(func.count()).select_from(stmt.order_by(None).subquery())
+        )
+        items = list(self.session.scalars(stmt.limit(limit).offset(offset)))
+        return items, int(total or 0)
+
+    def delete(self, run_id: UUID) -> bool:
+        count = self.session.execute(
+            delete(SimulationRunModel).where(SimulationRunModel.id == run_id)
+        ).rowcount
+        return bool(count)
+
+    def delete_expired(self, now: datetime) -> list[SimulationRunModel]:
+        stmt = select(SimulationRunModel).where(SimulationRunModel.expires_at < now)
+        return list(self.session.scalars(stmt))

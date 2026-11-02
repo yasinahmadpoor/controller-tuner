@@ -5,7 +5,11 @@ from contextlib import contextmanager
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.db.repositories import ArtifactRepository, SystemRepository
+from app.db.repositories import (
+    ArtifactRepository,
+    SimulationRunRepository,
+    SystemRepository,
+)
 
 
 class RunRepository:
@@ -28,6 +32,9 @@ class UnitOfWork:
         self.session: Session | None = None
         self.systems: SystemRepository | None = None
         self.artifacts: ArtifactRepository | None = None
+        self.simulation_runs: SimulationRunRepository | None = None
+        # Convenience alias used by some services/tests.
+        self.simulations: SimulationRunRepository | None = None
 
     def __enter__(self) -> UnitOfWork:
         self.session = self._session_factory()
@@ -37,6 +44,8 @@ class UnitOfWork:
     def _bind_repositories(self, session: Session) -> None:
         self.systems = SystemRepository(session)
         self.artifacts = ArtifactRepository(session)
+        self.simulation_runs = SimulationRunRepository(session)
+        self.simulations = self.simulation_runs
 
     def commit(self) -> None:
         if self.session is not None:

@@ -25,6 +25,7 @@ class AppContext:
     engines_loaded: bool = False
     catalog: Any = None
     system_service: Any = None
+    simulation_service: Any = None
     cleanup_service: Any = None
 
     def check_engine(self) -> bool:

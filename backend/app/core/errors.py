@@ -59,6 +59,11 @@ class InvalidMetadata(DomainError):
     code = "invalid_metadata"
 
 
+class InvalidParameters(DomainError):
+    status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
+    code = "invalid_parameters"
+
+
 class CapabilityNotSupported(DomainError):
     status_code = status.HTTP_409_CONFLICT
     code = "capability_not_supported"

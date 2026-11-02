@@ -183,6 +183,27 @@ class SystemService:
             )
         return self._to_spec(system)
 
+    def get_spec_and_code(self, system_id: str) -> tuple[SystemSpec, str]:
+        """Return the canonical spec plus the persisted dynamics source."""
+        parsed = _parse_uuid(system_id)
+        with UnitOfWork(self._session_factory) as uow:
+            system = self._systems(uow).get(parsed)
+            if system is None:
+                raise SystemNotFound(
+                    f"system {system_id!r} not found", context={"system_id": system_id}
+                )
+            spec = self._to_spec(system)
+            storage_key = system.artifact.storage_key
+        try:
+            data = self._storage.open(storage_key)
+        except Exception as exc:
+            raise StorageError(f"system code could not be read: {exc}") from exc
+        try:
+            code = data.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise StorageError("system code is not valid UTF-8") from exc
+        return spec, code
+
     def list(
         self, *, limit: int = 20, offset: int = 0, source_type: str | None = None
     ) -> tuple[list[SystemSpec], int]:

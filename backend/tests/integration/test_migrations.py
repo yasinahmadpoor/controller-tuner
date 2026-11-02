@@ -55,7 +55,7 @@ def test_empty_schema_upgrades_to_head(ready_dependencies, test_env):
 def test_database_schema_has_only_alembic_version_table(ready_dependencies, test_env):
     engine = create_engine(os.environ["DATABASE_URL"])
     tables = inspect(engine).get_table_names()
-    assert set(tables) == {"alembic_version", "artifacts", "systems"}
+    assert set(tables) == {"alembic_version", "artifacts", "systems", "simulation_runs"}
 
 
 def test_migration_roundtrip_is_reversible(ready_dependencies, test_env):
@@ -79,7 +79,7 @@ def test_upgrade_followed_by_migration_state(clean_database, test_env):
     assert _run_alembic("upgrade", "head").returncode == 0
     engine = create_engine(os.environ["DATABASE_URL"])
     tables = inspect(engine).get_table_names()
-    assert set(tables) == {"alembic_version", "artifacts", "systems"}
+    assert set(tables) == {"alembic_version", "artifacts", "systems", "simulation_runs"}
     current, head = _read_current_head(os.environ["DATABASE_URL"])
     assert current == head
 

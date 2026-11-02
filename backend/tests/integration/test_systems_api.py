@@ -30,7 +30,9 @@ def _upgrade_head(database_url: str) -> None:
 def _truncate_tables(database_url: str) -> None:
     engine = create_engine(database_url)
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE TABLE systems, artifacts RESTART IDENTITY CASCADE"))
+        conn.execute(
+            text("TRUNCATE TABLE simulation_runs, systems, artifacts RESTART IDENTITY CASCADE")
+        )
     engine.dispose()
 
 

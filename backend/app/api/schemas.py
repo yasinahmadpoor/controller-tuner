@@ -91,23 +91,27 @@ class PaginatedResponse(BaseModel):
 
 
 class SimulationOverrides(BaseModel):
-    dt: float | None = None
-    max_time: float | None = None
+    dt: float | None = Field(default=None, gt=0)
+    max_time: float | None = Field(default=None, gt=0)
     target: float | None = None
-    input_channel: int | None = None
-    output_channel: int | None = None
+    input_channel: int | None = Field(default=None, ge=0)
+    output_channel: int | None = Field(default=None, ge=0)
     trim_values: list[float] | None = None
     min_control: float | None = None
     max_control: float | None = None
     initial_condition_range: tuple[float, float] | None = None
-    randomness_level: float | None = None
-    disturbance_level: float | None = None
+    randomness_level: float | None = Field(default=None, ge=0)
+    disturbance_level: float | None = Field(default=None, ge=0)
 
     @model_validator(mode="after")
     def _validate_ranges(self) -> SimulationOverrides:
         if self.min_control is not None and self.max_control is not None:
             if self.min_control >= self.max_control:
                 raise ValueError("'min_control' must be less than 'max_control'")
+        if self.initial_condition_range is not None:
+            low, high = self.initial_condition_range
+            if low > high:
+                raise ValueError("'initial_condition_range' lower bound must be <= upper bound")
         return self
 
 
@@ -117,6 +121,70 @@ class SimulateRequest(BaseModel):
     initial_state: list[float] | None = None
     seed: int | None = None
     overrides: SimulationOverrides | None = None
+
+    @model_validator(mode="after")
+    def _validate_params(self) -> SimulateRequest:
+        import math
+
+        if not self.params:
+            raise ValueError("'params' must contain the controller gains")
+        for name, value in self.params.items():
+            if not math.isfinite(value):
+                raise ValueError(f"parameter '{name}' must be finite")
+        if self.initial_state is not None:
+            if not self.initial_state:
+                raise ValueError("'initial_state' must not be empty")
+            if any(not math.isfinite(value) for value in self.initial_state):
+                raise ValueError("'initial_state' values must be finite")
+        return self
+
+
+class ParamSchemaResponse(BaseModel):
+    controller_type: ControllerType
+    params: dict[str, Any]
+
+
+class SimulationRunSummary(BaseModel):
+    run_id: UUID
+    system_id: UUID
+    run_type: RunType = RunType.SIMULATION
+    engine: Engine
+    controller_type: ControllerType
+    status: str
+    duration_ms: int | None = None
+    created_at: datetime
+    summary: dict[str, Any] = Field(default_factory=dict)
+
+
+class SimulationRunListResponse(BaseModel):
+    items: list[SimulationRunSummary]
+    total: int
+    limit: int
+    offset: int
+
+
+class SimulationRunDetail(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    run_id: UUID
+    system_id: UUID
+    run_type: RunType = RunType.SIMULATION
+    engine: Engine
+    controller_type: ControllerType
+    status: str
+    request: dict[str, Any] | None = None
+    params: dict[str, float]
+    overrides: dict[str, Any]
+    initial_state: list[float] | None = None
+    seed: int | None = None
+    metrics: dict[str, Any]
+    non_finite_metrics: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    error: dict[str, Any] | None = None
+    trajectory_artifact_id: UUID | None = None
+    duration_ms: int | None = None
+    created_at: datetime
+    trajectory: dict[str, Any] | None = None
 
 
 class SimulateResult(BaseModel):
