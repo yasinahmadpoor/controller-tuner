@@ -14,9 +14,23 @@
 
 ## Upgrade an engine
 
-Engines are read-only upstream repositories. Upgrade deliberately:
+Engines are read-only upstream repositories stored as pinned git submodules. Initialize
+them first:
 
-1. Check out and pin the new engine commit for both `gaTunerPID` and `tunerPID`.
+```bash
+git submodule update --init --recursive
+```
+
+Upgrade deliberately:
+
+1. Check out the new engine commit inside each submodule, then record the new gitlink:
+
+   ```bash
+   cd gaTunerPID && git fetch && git checkout <new-ga-commit> && cd ..
+   cd tunerPID && git fetch && git checkout <new-tuner-commit> && cd ..
+   git add gaTunerPID tunerPID
+   ```
+
 2. Run `python scripts/verify_engines.py` to see exactly which tracked files changed.
 3. Update `scripts/engine_sources.sha256` only after reviewing the diff:
    `python scripts/verify_engines.py --write`.

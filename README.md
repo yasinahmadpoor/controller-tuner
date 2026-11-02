@@ -4,6 +4,24 @@ Unified controller tuning platform: a FastAPI backend, Celery workers, PostgreSQ
 Redis, and a React + Tailwind UI wrapping the read-only `gaTunerPID` and `tunerPID`
 engines.
 
+## Clone
+
+The read-only engine repositories are pinned git submodules:
+
+```bash
+git clone --recurse-submodules <repository-url>
+cd <repository>
+```
+
+For an existing clone:
+
+```bash
+git submodule update --init --recursive
+```
+
+A clone without submodules cannot build or run: the Docker images copy
+`gaTunerPID/` and `tunerPID/`, and the backend imports them at runtime.
+
 ## Quick start (production-like Compose)
 
 Requirements: Docker Engine with Compose v2.
@@ -117,8 +135,11 @@ settings:
 - `frontend/src` — typed API client, TanStack Query hooks, catalog/workspace UI.
 - `docs/` — architecture, API plan, and implementation phases.
 
-Engine sources are vendored into the images at `/app/engines/gaTunerPID` and
-`/app/engines/tunerPID`. Set `GA_ENGINE_REPO`/`MANUAL_ENGINE_REPO` to override them.
+Engine sources come from pinned git submodules and are copied into the images at
+`/app/engines/gaTunerPID` and `/app/engines/tunerPID`. Set
+`GA_ENGINE_REPO`/`MANUAL_ENGINE_REPO` to override them. Run
+`python scripts/verify_engines.py` to confirm the checked-out submodules match the
+recorded hashes.
 
 ## Documentation
 

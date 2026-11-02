@@ -41,19 +41,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
-      - name: Check out pinned engine repositories
-        uses: actions/checkout@v4
         with:
-          repository: mnarimani/gaTunerPID
-          ref: be06cda4ddff85074f6072de96fd7f0b1891bd60
-          path: gaTunerPID
-      - name: Check out tunerPID
-        uses: actions/checkout@v4
-        with:
-          repository: mnarimani/tunerPID
-          ref: 93319e58b13b06ce641f846f191f8e17e72f1800
-          path: tunerPID
+          submodules: recursive
 
       - name: Verify engine sources are unchanged
         run: python scripts/verify_engines.py
@@ -113,18 +102,8 @@ jobs:
     needs: [backend, frontend]
     steps:
       - uses: actions/checkout@v4
-      - name: Check out pinned engine repositories
-        uses: actions/checkout@v4
         with:
-          repository: mnarimani/gaTunerPID
-          ref: be06cda4ddff85074f6072de96fd7f0b1891bd60
-          path: gaTunerPID
-      - name: Check out tunerPID
-        uses: actions/checkout@v4
-        with:
-          repository: mnarimani/tunerPID
-          ref: 93319e58b13b06ce641f846f191f8e17e72f1800
-          path: tunerPID
+          submodules: recursive
 
       - name: Validate Compose configuration
         run: docker compose config >/dev/null
