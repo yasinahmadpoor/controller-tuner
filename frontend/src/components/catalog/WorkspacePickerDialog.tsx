@@ -7,6 +7,7 @@ export function WorkspacePickerDialog({
   busy,
   onOpen,
   onCreate,
+  onDelete,
   onClose,
 }: {
   entry: CatalogEntry;
@@ -14,6 +15,7 @@ export function WorkspacePickerDialog({
   busy: boolean;
   onOpen: (workspace: SystemSummary) => void;
   onCreate: () => void;
+  onDelete: (workspace: SystemSummary) => void;
   onClose: () => void;
 }) {
   return (
@@ -64,6 +66,13 @@ export function WorkspacePickerDialog({
                   className="btn-secondary"
                 >
                   Open workspace
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(workspace)}
+                  className="rounded-xl border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                >
+                  Delete
                 </button>
               </div>
             </li>

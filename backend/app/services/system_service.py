@@ -22,6 +22,7 @@ from app.core.errors import (
     InvalidMetadata,
     InvalidPython,
     StorageError,
+    SystemInUse,
     SystemNotFound,
 )
 from app.core.security import validate_python_source
@@ -249,6 +250,12 @@ class SystemService:
             if self._systems(uow).get(system_id) is None:
                 raise SystemNotFound(
                     f"system {system_id} not found",
+                    context={"system_id": str(system_id)},
+                )
+            assert uow.jobs is not None
+            if uow.jobs.has_active_for_system(system_id):
+                raise SystemInUse(
+                    "system has an active optimization job",
                     context={"system_id": str(system_id)},
                 )
             self._systems(uow).delete(system_id)  # runs/jobs cascade at FK level

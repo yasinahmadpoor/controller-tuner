@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
@@ -81,6 +81,28 @@ describe("CatalogPage", () => {
     expect(await screen.findByText("Recent workspaces")).toBeInTheDocument();
     expect(screen.getByText("2 total")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Open" })).toHaveLength(2);
+  });
+
+  it("deletes a workspace from the recent list after confirmation", async () => {
+    const user = userEvent.setup();
+    let deleted = false;
+    server.use(
+      http.get("*/api/v1/catalog", () => HttpResponse.json({ items: [catalogEntry] })),
+      http.get("*/api/v1/systems", () => systemsResponse([systemFixture])),
+      http.delete("*/api/v1/systems/*", () => {
+        deleted = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderWithProviders(<CatalogPage />);
+
+    await user.click((await screen.findAllByRole("button", { name: "Delete" }))[0]);
+    expect(screen.getByRole("alertdialog")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Delete workspace permanently" }));
+
+    await waitFor(() => expect(deleted).toBe(true));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   it("shows a readable error when the catalog fails", async () => {

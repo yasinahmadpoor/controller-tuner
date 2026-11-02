@@ -7,6 +7,7 @@ import {
 import {
   cancelJob,
   deleteRun,
+  deleteSystem,
   enqueueOptimize,
   getCatalog,
   getJob,
@@ -52,6 +53,18 @@ export function useSystems(
     queryKey: [...systemsKey, params] as const,
     queryFn: () => listSystems(params),
     staleTime: 15_000,
+  });
+}
+
+export function useDeleteSystem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (systemId: string) => deleteSystem(systemId),
+    onSuccess: (_data, systemId) => {
+      queryClient.removeQueries({ queryKey: systemKey(systemId) });
+      void queryClient.invalidateQueries({ queryKey: systemsKey });
+      void queryClient.invalidateQueries({ queryKey: catalogKey });
+    },
   });
 }
 

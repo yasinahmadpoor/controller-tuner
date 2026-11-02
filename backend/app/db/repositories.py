@@ -445,6 +445,16 @@ class JobRepository(BaseRepository):
         count = self.session.execute(delete(JobModel).where(JobModel.id == job_id)).rowcount
         return bool(count)
 
+    def has_active_for_system(self, system_id: UUID) -> bool:
+        stmt = (
+            select(func.count())
+            .select_from(JobModel)
+            .join(OptimizationRunModel, JobModel.run_id == OptimizationRunModel.id)
+            .where(OptimizationRunModel.system_id == system_id)
+            .where(JobModel.status.in_(("queued", "running")))
+        )
+        return bool(self.session.scalar(stmt))
+
     def delete_expired(self, now: datetime) -> list[JobModel]:
         stmt = select(JobModel).where(JobModel.expires_at < now)
         return list(self.session.scalars(stmt))

@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Navigate, useParams } from "react-router-dom";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
 
 import { useSystem } from "../../hooks/queries";
 import type { SimulateResult } from "../../types/api";
+import { DeleteWorkspaceDialog } from "../common/DeleteWorkspaceDialog";
 import { ErrorBanner } from "../common/ErrorBanner";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { AutoTuneTab } from "../auto/AutoTuneTab";
@@ -36,7 +37,9 @@ function readStoredResult(systemId: string): SimulateResult | null {
 export function WorkspacePage() {
   const { systemId, tab } = useParams<{ systemId: string; tab?: string }>();
   const system = useSystem(systemId);
+  const navigate = useNavigate();
   const [result, setResult] = useState<SimulateResult | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   useEffect(() => {
     if (systemId) {
@@ -83,7 +86,7 @@ export function WorkspacePage() {
 
   return (
     <div className="space-y-6">
-      <SystemSummaryCard system={system.data} />
+      <SystemSummaryCard system={system.data} onDelete={() => setDeleteOpen(true)} />
       <WorkflowTabs systemId={systemId} />
       {tab === "manual" ? (
         <ManualTuningTab
@@ -95,6 +98,13 @@ export function WorkspacePage() {
       ) : null}
       {tab === "auto" ? <AutoTuneTab key={system.data.system_id} system={system.data} /> : null}
       {tab === "history" ? <HistoryTab systemId={systemId} /> : null}
+      {deleteOpen ? (
+        <DeleteWorkspaceDialog
+          workspace={system.data}
+          onClose={() => setDeleteOpen(false)}
+          onDeleted={() => navigate("/systems", { replace: true })}
+        />
+      ) : null}
     </div>
   );
 }

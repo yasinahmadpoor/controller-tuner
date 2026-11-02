@@ -1,6 +1,12 @@
 import type { SystemSummary } from "../../types/api";
 
-export function SystemSummaryCard({ system }: { system: SystemSummary }) {
+export function SystemSummaryCard({
+  system,
+  onDelete,
+}: {
+  system: SystemSummary;
+  onDelete?: () => void;
+}) {
   return (
     <section className="card overflow-hidden">
       <div className="bg-gradient-to-br from-accent-600 to-accent-700 px-5 py-5 text-white sm:px-6">
@@ -14,7 +20,7 @@ export function SystemSummaryCard({ system }: { system: SystemSummary }) {
               <p className="mt-1 max-w-2xl text-sm text-accent-100">{system.objective}</p>
             ) : null}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {system.capabilities.map((capability) => (
               <span
                 key={capability}
@@ -23,6 +29,15 @@ export function SystemSummaryCard({ system }: { system: SystemSummary }) {
                 {capability}
               </span>
             ))}
+            {onDelete ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="rounded-full border border-rose-200/60 bg-rose-950/20 px-3 py-1 text-xs font-semibold text-rose-50 hover:bg-rose-950/40"
+              >
+                Delete workspace
+              </button>
+            ) : null}
           </div>
         </div>
       </div>

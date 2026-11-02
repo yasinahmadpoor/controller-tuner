@@ -97,5 +97,5 @@ All errors use the same envelope:
 ```
 
 Common codes: `system_not_found`, `run_not_found`, `job_not_found`,
-`capability_not_supported`, `optimization_in_progress`, `job_not_cancellable`,
+`capability_not_supported`, `optimization_in_progress`, `system_in_use`, `job_not_cancellable`,
 `job_queue_full`, `payload_too_large`, `engine_error`, `service_not_ready`.

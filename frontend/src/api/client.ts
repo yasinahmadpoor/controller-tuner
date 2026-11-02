@@ -96,6 +96,10 @@ export function uploadSystem(
   return request<SystemSummary>("/systems", { method: "POST", body });
 }
 
+export function deleteSystem(systemId: string): Promise<void> {
+  return request<void>(`/systems/${systemId}`, { method: "DELETE" });
+}
+
 export function getSystem(systemId: string): Promise<SystemSummary> {
   return request<SystemSummary>(`/systems/${systemId}`);
 }

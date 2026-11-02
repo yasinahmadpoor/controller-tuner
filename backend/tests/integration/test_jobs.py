@@ -188,3 +188,20 @@ def test_job_not_found(client: TestClient):
     response = client.get("/api/v1/jobs/not-a-uuid")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "job_not_found"
+
+
+def test_active_job_blocks_workspace_deletion(client: TestClient):
+    system_id = _create_ball_beam(client)
+    _use_fake_enqueuer(client)
+    created = client.post(f"/api/v1/systems/{system_id}/optimize", json=_payload())
+    assert created.status_code == 202, created.text
+
+    blocked = client.delete(f"/api/v1/systems/{system_id}")
+
+    assert blocked.status_code == 409
+    assert blocked.json()["error"]["code"] == "system_in_use"
+
+    cancelled = client.post(f"/api/v1/jobs/{created.json()['job_id']}/cancel")
+    assert cancelled.status_code == 200
+    deleted = client.delete(f"/api/v1/systems/{system_id}")
+    assert deleted.status_code == 204

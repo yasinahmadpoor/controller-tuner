@@ -11,6 +11,7 @@ import { EmptyState } from "../common/EmptyState";
 import { ErrorBanner } from "../common/ErrorBanner";
 import { LoadingSpinner } from "../common/LoadingSpinner";
 import { useToast } from "../common/ToastHost";
+import { DeleteWorkspaceDialog } from "../common/DeleteWorkspaceDialog";
 import { UploadSystemDialog } from "./UploadSystemDialog";
 import { WorkspacePickerDialog } from "./WorkspacePickerDialog";
 
@@ -106,6 +107,7 @@ export function CatalogPage() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [pickerEntry, setPickerEntry] = useState<CatalogEntry | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SystemSummary | null>(null);
 
   const create = useMutation({
     mutationFn: createSystemFromCatalog,
@@ -246,13 +248,22 @@ export function CatalogPage() {
                     {formatDate(workspace.created_at)}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/systems/${workspace.system_id}/manual`)}
-                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-                >
-                  Open
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/systems/${workspace.system_id}/manual`)}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    Open
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(workspace)}
+                    className="rounded-lg border border-rose-200 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                  >
+                    Delete
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
@@ -273,11 +284,25 @@ export function CatalogPage() {
           busy={openingId === pickerEntry.catalog_id}
           onOpen={(workspace) => navigate(`/systems/${workspace.system_id}/manual`)}
           onCreate={createNewFromPicker}
+          onDelete={setDeleteTarget}
           onClose={() => setPickerEntry(null)}
         />
       ) : null}
 
-
+      {deleteTarget ? (
+        <DeleteWorkspaceDialog
+          workspace={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            const deletingLastPickerWorkspace =
+              pickerEntry !== null && pickerWorkspaces.length <= 1;
+            setDeleteTarget(null);
+            if (deletingLastPickerWorkspace) {
+              setPickerEntry(null);
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }
