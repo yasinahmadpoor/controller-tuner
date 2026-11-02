@@ -1,8 +1,8 @@
 """Discovery and merge of curated case studies from both engine repositories.
 
 Sources:
-- ``gaTunerPID/case_studies/json/*.json`` (JSON metadata + embedded code)
-- ``tunerPID/case_studies/*.py`` (standalone Python dynamics)
+- ``engines/gaTunerPID/case_studies/json/*.json`` (JSON metadata + embedded code)
+- ``engines/tunerPID/case_studies/*.py`` (standalone Python dynamics)
 
 Entries are merged by slug; JSON metadata is authoritative for controls,
 targets, trim values and fixed targets. Missing sources are skipped with a
@@ -20,8 +20,8 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-_JSON_DIR = Path("gaTunerPID/case_studies/json")
-_PY_DIR = Path("tunerPID/case_studies")
+_JSON_DIR = Path("engines/gaTunerPID/case_studies/json")
+_PY_DIR = Path("engines/tunerPID/case_studies")
 
 
 def _slugify(stem: str) -> str:

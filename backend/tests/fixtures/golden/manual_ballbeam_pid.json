@@ -1,7 +1,7 @@
 {
   "description": "Manual engine BallBeam PID deterministic baseline",
   "inputs": {
-    "case_study": "tunerPID/case_studies/BallBeam.py",
+    "case_study": "engines/tunerPID/case_studies/BallBeam.py",
     "controller_type": "PID",
     "fixed_initial_state": [
       1.0,

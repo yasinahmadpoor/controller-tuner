@@ -37,7 +37,11 @@ class WorkerRuntime:
 
 def _catalog_root(settings: Settings) -> Path:
     ga_repo = Path(settings.ga_engine_repo)
-    return ga_repo.parent if ga_repo.name == "gaTunerPID" else _REPO_ROOT
+    if ga_repo.name == "gaTunerPID":
+        if ga_repo.parent.name == "engines":
+            return ga_repo.parent.parent
+        return ga_repo.parent
+    return _REPO_ROOT
 
 
 def build_worker_runtime(settings: Settings | None = None) -> WorkerRuntime:

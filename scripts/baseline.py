@@ -19,8 +19,8 @@ from tests.golden_utils import (  # noqa: E402
 
 def main() -> int:
     load_engines(
-        ga_repo=REPO_ROOT / "gaTunerPID",
-        manual_repo=REPO_ROOT / "tunerPID",
+        ga_repo=REPO_ROOT / "engines" / "gaTunerPID",
+        manual_repo=REPO_ROOT / "engines" / "tunerPID",
     )
 
     dump_json(GOLDEN_DIR / "manual_ballbeam_pid.json", build_manual_golden())

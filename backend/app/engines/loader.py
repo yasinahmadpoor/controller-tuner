@@ -16,8 +16,8 @@ class EngineLoadError(RuntimeError):
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_GA_REPO = _REPO_ROOT / "gaTunerPID"
-_DEFAULT_MANUAL_REPO = _REPO_ROOT / "tunerPID"
+_DEFAULT_GA_REPO = _REPO_ROOT / "engines" / "gaTunerPID"
+_DEFAULT_MANUAL_REPO = _REPO_ROOT / "engines" / "tunerPID"
 
 _lock = threading.RLock()
 _manual: dict[str, Any] = {}

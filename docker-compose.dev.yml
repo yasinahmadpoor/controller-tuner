@@ -15,8 +15,8 @@ services:
       MANUAL_ENGINE_REPO: /engines/tunerPID
     volumes:
       - ./backend:/app
-      - ./gaTunerPID:/engines/gaTunerPID:ro
-      - ./tunerPID:/engines/tunerPID:ro
+      - ./engines/gaTunerPID:/engines/gaTunerPID:ro
+      - ./engines/tunerPID:/engines/tunerPID:ro
       - artifacts_data:/data/artifacts
 
   worker:
@@ -30,8 +30,8 @@ services:
       MANUAL_ENGINE_REPO: /engines/tunerPID
     volumes:
       - ./backend:/app
-      - ./gaTunerPID:/engines/gaTunerPID:ro
-      - ./tunerPID:/engines/tunerPID:ro
+      - ./engines/gaTunerPID:/engines/gaTunerPID:ro
+      - ./engines/tunerPID:/engines/tunerPID:ro
       - artifacts_data:/data/artifacts
 
   beat:
@@ -41,8 +41,8 @@ services:
       MANUAL_ENGINE_REPO: /engines/tunerPID
     volumes:
       - ./backend:/app
-      - ./gaTunerPID:/engines/gaTunerPID:ro
-      - ./tunerPID:/engines/tunerPID:ro
+      - ./engines/gaTunerPID:/engines/gaTunerPID:ro
+      - ./engines/tunerPID:/engines/tunerPID:ro
       - artifacts_data:/data/artifacts
 
   frontend:

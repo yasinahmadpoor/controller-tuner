@@ -13,11 +13,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_DIR = Path(__file__).resolve().parent / "fixtures" / "golden"
 
-MANUAL_CASE_STUDY = REPO_ROOT / "tunerPID" / "case_studies" / "BallBeam.py"
-GA_CASE_STUDY = REPO_ROOT / "gaTunerPID" / "case_studies" / "json" / "BallBeam.json"
+MANUAL_CASE_STUDY = REPO_ROOT / "engines" / "tunerPID" / "case_studies" / "BallBeam.py"
+GA_CASE_STUDY = REPO_ROOT / "engines" / "gaTunerPID" / "case_studies" / "json" / "BallBeam.json"
 
 MANUAL_INPUTS = {
-    "case_study": "tunerPID/case_studies/BallBeam.py",
+    "case_study": "engines/tunerPID/case_studies/BallBeam.py",
     "num_inputs": 1,
     "controller_type": "PID",
     "params": {"Kp": 15.0, "Ki": 0.5, "Kd": 2.0},
@@ -35,7 +35,7 @@ MANUAL_INPUTS = {
 }
 
 GA_INPUTS = {
-    "case_study": "gaTunerPID/case_studies/json/BallBeam.json",
+    "case_study": "engines/gaTunerPID/case_studies/json/BallBeam.json",
     "ga_config": {"population_size": 5, "generations": 2, "seed": 42},
     "weights": {
         "mse": 1.0,

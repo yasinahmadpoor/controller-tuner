@@ -21,5 +21,5 @@ def test_catalog_uses_json_metadata_and_exposes_sources():
     assert entry is not None
     assert entry.target == 0.0
     assert entry.num_states == 2
-    assert entry.sources["json"].endswith("gaTunerPID/case_studies/json/BallBeam.json")
-    assert entry.sources["python"].endswith("tunerPID/case_studies/BallBeam.py")
+    assert entry.sources["json"].endswith("engines/gaTunerPID/case_studies/json/BallBeam.json")
+    assert entry.sources["python"].endswith("engines/tunerPID/case_studies/BallBeam.py")

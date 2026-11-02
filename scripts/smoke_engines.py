@@ -12,8 +12,8 @@ from app.engines.loader import ga, load_engines, manual  # noqa: E402
 
 def main() -> int:
     load_engines(
-        ga_repo=REPO_ROOT / "gaTunerPID",
-        manual_repo=REPO_ROOT / "tunerPID",
+        ga_repo=REPO_ROOT / "engines" / "gaTunerPID",
+        manual_repo=REPO_ROOT / "engines" / "tunerPID",
     )
 
     print("manual_engine:", ", ".join(sorted(manual())))

@@ -26,4 +26,4 @@ def test_both_engines_load_with_expected_exports():
 def test_ga_repository_is_not_left_on_sys_path():
     load_engines()
 
-    assert str((REPO_ROOT / "gaTunerPID").resolve()) not in sys.path
+    assert str((REPO_ROOT / "engines" / "gaTunerPID").resolve()) not in sys.path

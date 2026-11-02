@@ -13,8 +13,8 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 def loaded_engines():
     reset_engines()
     load_engines(
-        ga_repo=REPO_ROOT / "gaTunerPID",
-        manual_repo=REPO_ROOT / "tunerPID",
+        ga_repo=REPO_ROOT / "engines" / "gaTunerPID",
+        manual_repo=REPO_ROOT / "engines" / "tunerPID",
     )
     yield
     reset_engines()

@@ -2,7 +2,7 @@
 
 **Status:** Proposed — database-backed revision  
 **Scope:** Unify `gaTunerPID` (GA auto-tuning) and `tunerPID` (manual simulation) behind one FastAPI backend with PostgreSQL + Redis, one React + Tailwind UI, Celery background workers, Docker Compose deployment, and automated tests.  
-**Hard constraint:** The business logic in both repositories must not be modified. All engine code under `gaTunerPID/src/` and `tunerPID/src/` is treated as read-only.
+**Hard constraint:** The business logic in both repositories must not be modified. All engine code under `engines/gaTunerPID/src/` and `engines/tunerPID/src/` is treated as read-only.
 
 ---
 
@@ -57,7 +57,7 @@ results = optimizer.optimize_pid(
 
 Relevant result fields: `success`, `controller_parameters`, `achieved_metrics`, `ga_cost`, `baseline_cost`, `warnings`, `progress`, `num_evaluations`, `stop_reason`, `target_hit_*`.
 
-**Known drift in the reference Streamlit app:** `gaTunerPID/app.py` calls `optimize_pid(targets, weights, param_ranges)`, which does not match the current engine signature, and later reads `results["cost"]`, which the engine does not return. The backend must follow the engine contract (`weights`, `param_ranges`, `fixed_targets`) and use `ga_cost`/`baseline_cost`. Contract tests must lock this down.
+**Known drift in the reference Streamlit app:** `engines/gaTunerPID/app.py` calls `optimize_pid(targets, weights, param_ranges)`, which does not match the current engine signature, and later reads `results["cost"]`, which the engine does not return. The backend must follow the engine contract (`weights`, `param_ranges`, `fixed_targets`) and use `ga_cost`/`baseline_cost`. Contract tests must lock this down.
 
 ### 2.2 `tunerPID` — manual simulation engine
 
@@ -179,7 +179,7 @@ One **system** can be used by both workflows because the integration layer build
                     └───────┬─────────────────┬───────────┘
                             │                 │
               ┌─────────────▼──────┐  ┌───────▼─────────────┐
-              │  tunerPID/src      │  │  gaTunerPID/src     │
+              │  engines/tunerPID/src      │  │  engines/gaTunerPID/src     │
               │  (read-only)       │  │  (read-only)        │
               │  manual simulation │  │  GA optimization    │
               └────────────────────┘  └─────────────────────┘
@@ -195,11 +195,11 @@ The two source repositories remain untouched. The umbrella project adds new dire
 
 ```
 task/
-├── gaTunerPID/                  # provided — read-only
+├── engines/gaTunerPID/                  # provided — read-only
 │   ├── src/
 │   ├── case_studies/json/
 │   └── app.py
-├── tunerPID/                    # provided — read-only
+├── engines/tunerPID/                    # provided — read-only
 │   ├── src/core/
 │   ├── streamlit/
 │   └── case_studies/
@@ -386,8 +386,8 @@ task/
 
 Both repositories expose a top-level Python package named `src`.
 
-- `gaTunerPID/src/*.py` uses absolute imports such as `from src.simulator import SystemSimulator`.
-- `tunerPID/src/core/*.py` uses relative imports such as `from .dynamics import DynamicalSystem`.
+- `engines/gaTunerPID/src/*.py` uses absolute imports such as `from src.simulator import SystemSimulator`.
+- `engines/tunerPID/src/core/*.py` uses relative imports such as `from .dynamics import DynamicalSystem`.
 
 They cannot both be imported as `src` in the same process. The recommended solution is **no copying and no source edits**: load the manual engine under a distinct alias with `importlib`, and let the GA engine keep its native `src` name.
 
@@ -985,8 +985,8 @@ Response:
       "target": 0.0,
       "capabilities": ["simulate", "optimize"],
       "sources": {
-        "json": "gaTunerPID/case_studies/json/BallBeam.json",
-        "python": "tunerPID/case_studies/BallBeam.py"
+        "json": "engines/gaTunerPID/case_studies/json/BallBeam.json",
+        "python": "engines/tunerPID/case_studies/BallBeam.py"
       }
     }
   ]
@@ -1017,7 +1017,7 @@ Catalog entries are curated server-side metadata and do not expose code. If a so
 }
 ```
 
-**Mode B — full JSON case study (the shape of `gaTunerPID/case_studies/json/*.json`):**
+**Mode B — full JSON case study (the shape of `engines/gaTunerPID/case_studies/json/*.json`):**
 
 ```json
 {
@@ -1761,8 +1761,8 @@ COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./alembic.ini
 COPY backend/scripts ./scripts
 COPY backend/docker ./docker
-COPY gaTunerPID ./engines/gaTunerPID
-COPY tunerPID ./engines/tunerPID
+COPY engines/gaTunerPID ./engines/gaTunerPID
+COPY engines/tunerPID ./engines/tunerPID
 
 RUN useradd --create-home --uid 10001 appuser \
     && mkdir -p /data/artifacts && chown -R appuser:appuser /app /data
@@ -1818,7 +1818,7 @@ server {
 
 - Postgres and Redis services with exposed ports (`5432`, `6379`) for local tools.
 - `migrate` runs `alembic upgrade head` on startup; for rapid iteration, run `alembic revision --autogenerate` locally.
-- Backend: bind-mount `backend/app`, `gaTunerPID`, and `tunerPID`; run `uvicorn --reload`.
+- Backend: bind-mount `backend/app`, `engines/gaTunerPID`, and `engines/tunerPID`; run `uvicorn --reload`.
 - Worker: bind-mount the same paths; run Celery with `--pool=solo` or concurrency 1 for easier debugging.
 - Frontend: bind-mount `frontend/`; run `npm run dev -- --host 0.0.0.0`; expose `5173`.
 - `VITE_API_URL=http://localhost:8000/api/v1`.

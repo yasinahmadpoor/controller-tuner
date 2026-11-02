@@ -9,8 +9,8 @@ engines.
 The read-only engine repositories are pinned git submodules:
 
 ```bash
-git clone --recurse-submodules <repository-url>
-cd <repository>
+git clone --recurse-submodules git@github.com:yasinahmadpoor/task.git
+cd task
 ```
 
 For an existing clone:
@@ -20,7 +20,7 @@ git submodule update --init --recursive
 ```
 
 A clone without submodules cannot build or run: the Docker images copy
-`gaTunerPID/` and `tunerPID/`, and the backend imports them at runtime.
+`engines/gaTunerPID/` and `engines/tunerPID/`, and the backend imports them at runtime.
 
 ## Quick start (production-like Compose)
 

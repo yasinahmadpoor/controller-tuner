@@ -2,9 +2,9 @@
 
 ## Add a new case study
 
-1. Add the Python dynamics file to `tunerPID/case_studies/<Name>.py` with a top-level
+1. Add the Python dynamics file to `engines/tunerPID/case_studies/<Name>.py` with a top-level
    `dynamics(t, x, u)` function.
-2. Add matching `gaTunerPID/case_studies/json/<Name>.json` metadata (`num_states`,
+2. Add matching `engines/gaTunerPID/case_studies/json/<Name>.json` metadata (`num_states`,
    `num_inputs`, target, channels, control limits, trim values, fixed targets).
 3. Start the stack and confirm `GET /api/v1/catalog` lists the new entry.
 4. Create it from the catalog, run a manual simulation, then a tiny GA optimization
@@ -26,9 +26,9 @@ Upgrade deliberately:
 1. Check out the new engine commit inside each submodule, then record the new gitlink:
 
    ```bash
-   cd gaTunerPID && git fetch && git checkout <new-ga-commit> && cd ..
-   cd tunerPID && git fetch && git checkout <new-tuner-commit> && cd ..
-   git add gaTunerPID tunerPID
+   cd engines/gaTunerPID && git fetch && git checkout <new-ga-commit> && cd ../..
+   cd engines/tunerPID && git fetch && git checkout <new-tuner-commit> && cd ../..
+   git add engines/gaTunerPID engines/tunerPID
    ```
 
 2. Run `python scripts/verify_engines.py` to see exactly which tracked files changed.

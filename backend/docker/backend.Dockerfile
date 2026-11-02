@@ -13,8 +13,8 @@ COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY backend /app
-COPY gaTunerPID /app/engines/gaTunerPID
-COPY tunerPID /app/engines/tunerPID
+COPY engines/gaTunerPID /app/engines/gaTunerPID
+COPY engines/tunerPID /app/engines/tunerPID
 
 RUN useradd --create-home --uid 10001 app \
     && mkdir -p /data/artifacts \

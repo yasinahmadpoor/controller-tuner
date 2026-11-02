@@ -1,6 +1,6 @@
-[submodule "gaTunerPID"]
-	path = gaTunerPID
+[submodule "engines/gaTunerPID"]
+	path = engines/gaTunerPID
 	url = https://github.com/mnarimani/gaTunerPID.git
-[submodule "tunerPID"]
-	path = tunerPID
+[submodule "engines/tunerPID"]
+	path = engines/tunerPID
 	url = https://github.com/mnarimani/tunerPID.git

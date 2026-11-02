@@ -10,12 +10,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = REPO_ROOT / "scripts" / "engine_sources.sha256"
 
 TRACKED_PATHS: tuple[tuple[str, str], ...] = (
-    ("gaTunerPID/src", "*.py"),
-    ("gaTunerPID/app.py", ""),
-    ("gaTunerPID/case_studies/json", "*.json"),
-    ("tunerPID/src", "*.py"),
-    ("tunerPID/streamlit/app.py", ""),
-    ("tunerPID/case_studies", "*.py"),
+    ("engines/gaTunerPID/src", "*.py"),
+    ("engines/gaTunerPID/app.py", ""),
+    ("engines/gaTunerPID/case_studies/json", "*.json"),
+    ("engines/tunerPID/src", "*.py"),
+    ("engines/tunerPID/streamlit/app.py", ""),
+    ("engines/tunerPID/case_studies", "*.py"),
 )
 
 

@@ -30,8 +30,8 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/1"
 
-    ga_engine_repo: Path = _REPO_ROOT / "gaTunerPID"
-    manual_engine_repo: Path = _REPO_ROOT / "tunerPID"
+    ga_engine_repo: Path = _REPO_ROOT / "engines" / "gaTunerPID"
+    manual_engine_repo: Path = _REPO_ROOT / "engines" / "tunerPID"
 
     artifact_dir: Path = _REPO_ROOT / "backend" / "data" / "artifacts"
     artifact_backend: str = "local"

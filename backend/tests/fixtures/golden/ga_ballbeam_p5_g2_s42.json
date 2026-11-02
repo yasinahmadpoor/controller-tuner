@@ -1,7 +1,7 @@
 {
   "description": "GA engine BallBeam seeded smoke baseline",
   "inputs": {
-    "case_study": "gaTunerPID/case_studies/json/BallBeam.json",
+    "case_study": "engines/gaTunerPID/case_studies/json/BallBeam.json",
     "fixed_targets": {
       "control_effort": 0.1,
       "mse": 0.05,

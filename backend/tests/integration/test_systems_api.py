@@ -84,7 +84,9 @@ def test_create_case_study_json_matches_catalog_metadata(client: TestClient):
     catalog_payload = catalog.json()
 
     case_study = json.loads(
-        (REPO_ROOT / "gaTunerPID/case_studies/json/BallBeam.json").read_text(encoding="utf-8")
+        (REPO_ROOT / "engines/gaTunerPID/case_studies/json/BallBeam.json").read_text(
+            encoding="utf-8"
+        )
     )
     inline = client.post(
         "/api/v1/systems",
@@ -97,7 +99,7 @@ def test_create_case_study_json_matches_catalog_metadata(client: TestClient):
 
 
 def test_upload_python_file_with_metadata_creates_system(client: TestClient):
-    code = (REPO_ROOT / "tunerPID/case_studies/BallBeam.py").read_text(encoding="utf-8")
+    code = (REPO_ROOT / "engines/tunerPID/case_studies/BallBeam.py").read_text(encoding="utf-8")
     metadata = {
         "name": "Ball Beam Upload",
         "num_inputs": 1,
