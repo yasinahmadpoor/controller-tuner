@@ -205,11 +205,19 @@ class SystemService:
         return spec, code
 
     def list(
-        self, *, limit: int = 20, offset: int = 0, source_type: str | None = None
+        self,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+        source_type: str | None = None,
+        source_ref: str | None = None,
     ) -> tuple[list[SystemSpec], int]:
         with UnitOfWork(self._session_factory) as uow:
             items, total = self._systems(uow).list(
-                limit=limit, offset=offset, source_type=source_type
+                limit=limit,
+                offset=offset,
+                source_type=source_type,
+                source_ref=source_ref,
             )
         return [self._to_spec(system) for system in items], total
 

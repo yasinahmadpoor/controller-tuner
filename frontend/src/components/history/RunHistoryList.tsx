@@ -42,8 +42,10 @@ export function RunHistoryList({
 
   if (items.length === 0) {
     return (
-      <EmptyState title="No runs yet">
-        Run a simulation or optimization to build history for this system.
+      <EmptyState title="No runs in this workspace">
+        Run a simulation or optimization to build history here. History is scoped to
+        the current workspace; older runs may belong to a different workspace, and
+        optimization runs are listed under the Optimizations toggle.
       </EmptyState>
     );
   }

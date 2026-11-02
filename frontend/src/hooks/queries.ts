@@ -15,6 +15,7 @@ import {
   getSystem,
   listOptimizations,
   listSimulations,
+  listSystems,
   optimize,
   simulate,
   uploadSystem,
@@ -27,6 +28,7 @@ import type {
 } from "../types/api";
 
 const catalogKey = ["catalog"] as const;
+const systemsKey = ["systems"] as const;
 const systemKey = (systemId: string) => ["system", systemId] as const;
 const schemaKey = (systemId: string, type: ControllerType) =>
   ["schema", systemId, type] as const;
@@ -40,6 +42,16 @@ export function useCatalog() {
     queryKey: catalogKey,
     queryFn: getCatalog,
     staleTime: 60_000,
+  });
+}
+
+export function useSystems(
+  params: { limit?: number; offset?: number; source_type?: string; source_ref?: string } = {},
+) {
+  return useQuery({
+    queryKey: [...systemsKey, params] as const,
+    queryFn: () => listSystems(params),
+    staleTime: 15_000,
   });
 }
 

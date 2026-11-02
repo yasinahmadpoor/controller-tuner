@@ -12,6 +12,7 @@ import type {
   SimulateRequest,
   SimulateResult,
   SimulationRunDetail,
+  SystemListResponse,
   SystemSummary,
 } from "../types/api";
 
@@ -97,6 +98,18 @@ export function uploadSystem(
 
 export function getSystem(systemId: string): Promise<SystemSummary> {
   return request<SystemSummary>(`/systems/${systemId}`);
+}
+
+export function listSystems(
+  params: { limit?: number; offset?: number; source_type?: string; source_ref?: string } = {},
+): Promise<SystemListResponse> {
+  const search = new URLSearchParams();
+  if (params.limit !== undefined) search.set("limit", String(params.limit));
+  if (params.offset !== undefined) search.set("offset", String(params.offset));
+  if (params.source_type) search.set("source_type", params.source_type);
+  if (params.source_ref) search.set("source_ref", params.source_ref);
+  const suffix = search.toString();
+  return request<SystemListResponse>(`/systems${suffix ? `?${suffix}` : ""}`);
 }
 
 export function getSchema(

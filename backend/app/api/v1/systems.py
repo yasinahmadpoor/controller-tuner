@@ -28,6 +28,8 @@ def _response_from_spec(spec: SystemSpec) -> SystemResponse:
         name=spec.name,
         description=spec.description,
         objective=spec.objective,
+        source_type=spec.source_type,
+        source_ref=spec.source_ref,
         num_states=spec.num_states,
         num_inputs=spec.num_inputs,
         target=spec.simulation.target,
@@ -123,9 +125,15 @@ def list_systems(
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
     source_type: str | None = None,
+    source_ref: str | None = None,
 ) -> dict:
     service = get_system_service(request)
-    items, total = service.list(limit=limit, offset=offset, source_type=source_type)
+    items, total = service.list(
+        limit=limit,
+        offset=offset,
+        source_type=source_type,
+        source_ref=source_ref,
+    )
     return {
         "items": [_response_from_spec(spec).model_dump(mode="json") for spec in items],
         "total": total,

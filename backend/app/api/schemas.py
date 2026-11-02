@@ -14,6 +14,7 @@ from app.domain.models import (
     OptimizationDefaults,
     RunType,
     SimulationDefaults,
+    SystemSource,
 )
 
 ControllableMetric = Literal["mse", "settling_time", "overshoot", "control_effort"]
@@ -74,6 +75,8 @@ class SystemResponse(BaseModel):
     name: str
     description: str | None = None
     objective: str | None = None
+    source_type: SystemSource
+    source_ref: str | None = None
     num_states: int
     num_inputs: int
     target: float

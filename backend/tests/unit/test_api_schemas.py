@@ -20,6 +20,8 @@ def _system_response_payload() -> dict:
     return {
         "system_id": str(uuid.uuid4()),
         "name": "Ball Beam",
+        "source_type": "catalog_json",
+        "source_ref": "ball_beam",
         "num_states": 2,
         "num_inputs": 1,
         "target": 0.0,
@@ -53,6 +55,8 @@ def _system_response_payload() -> dict:
 def test_system_response_roundtrip():
     response = SystemResponse.model_validate(_system_response_payload())
     assert response.num_states == 2
+    assert response.source_type.value == "catalog_json"
+    assert response.source_ref == "ball_beam"
     assert response.optimization.ga["population_size"] == 20
     assert [capability.value for capability in response.capabilities] == [
         "simulate",

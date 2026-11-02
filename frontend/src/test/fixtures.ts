@@ -27,6 +27,8 @@ export const systemFixture: SystemSummary = {
   name: "Ball Beam",
   description: "Balance a ball on a beam",
   objective: "Track the target position",
+  source_type: "catalog_json",
+  source_ref: "ball_beam",
   num_states: 2,
   num_inputs: 1,
   target: 0,

@@ -70,6 +70,8 @@ def test_create_system_from_catalog_ball_beam(client: TestClient):
     payload = response.json()
     assert payload["num_states"] == 2
     assert payload["target"] == 0.0
+    assert payload["source_type"] == "catalog_json"
+    assert payload["source_ref"] == "ball_beam"
     assert set(payload["capabilities"]) == {"simulate", "optimize"}
 
 
@@ -161,6 +163,33 @@ def test_get_list_delete_system_hides_source_and_storage_fields(client: TestClie
     missing = client.get(f"/api/v1/systems/{system_id}")
     assert missing.status_code == 404
     assert missing.json()["error"]["code"] == "system_not_found"
+
+
+def test_list_systems_filters_by_source_type_and_ref(client: TestClient):
+    first = client.post(
+        "/api/v1/systems",
+        json={"source": {"type": "catalog", "catalog_id": "ball_beam"}},
+    )
+    second = client.post(
+        "/api/v1/systems",
+        json={"source": {"type": "catalog", "catalog_id": "ball_beam"}},
+    )
+    other = client.post(
+        "/api/v1/systems",
+        json={"source": {"type": "catalog", "catalog_id": "dc_motor"}},
+    )
+    assert first.status_code == second.status_code == other.status_code == 201
+
+    response = client.get(
+        "/api/v1/systems",
+        params={"source_type": "catalog_json", "source_ref": "ball_beam", "limit": 100},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    ids = {item["system_id"] for item in body["items"]}
+    assert body["total"] == 2
+    assert ids == {first.json()["system_id"], second.json()["system_id"]}
 
 
 def test_uploading_identical_code_reuses_one_artifact_row(client: TestClient):

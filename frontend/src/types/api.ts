@@ -55,6 +55,8 @@ export interface SystemSummary {
   name: string;
   description: string | null;
   objective: string | null;
+  source_type: string;
+  source_ref: string | null;
   num_states: number;
   num_inputs: number;
   target: number;
@@ -62,6 +64,13 @@ export interface SystemSummary {
   simulation: SimulationDefaults;
   optimization: OptimizationDefaults;
   created_at: string;
+}
+
+export interface SystemListResponse {
+  items: SystemSummary[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface ParamBounds {

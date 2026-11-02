@@ -7,6 +7,24 @@ import { RunHistoryList } from "../../src/components/history/RunHistoryList";
 import { simulationRun } from "../../src/test/fixtures";
 
 describe("RunHistoryList", () => {
+  it("explains that empty history is scoped to the workspace", () => {
+    render(
+      <MemoryRouter>
+        <RunHistoryList
+          items={[]}
+          total={0}
+          limit={10}
+          offset={0}
+          onOffsetChange={vi.fn()}
+          onDelete={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("No runs in this workspace")).toBeInTheDocument();
+    expect(screen.getByText(/optimization runs are listed under the Optimizations toggle/i)).toBeInTheDocument();
+  });
+
   it("paginates, reopens, and deletes a run after confirmation", async () => {
     const user = userEvent.setup();
     const onOffsetChange = vi.fn();

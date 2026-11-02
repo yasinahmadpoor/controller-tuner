@@ -71,10 +71,13 @@ class SystemRepository(BaseRepository):
         limit: int = 20,
         offset: int = 0,
         source_type: str | None = None,
+        source_ref: str | None = None,
     ) -> tuple[list[SystemModel], int]:
         stmt = select(SystemModel)
         if source_type is not None:
             stmt = stmt.where(SystemModel.source_type == source_type)
+        if source_ref is not None:
+            stmt = stmt.where(SystemModel.source_ref == source_ref)
         stmt = stmt.order_by(SystemModel.created_at.desc(), SystemModel.id)
         total = self.session.scalar(
             select(func.count()).select_from(stmt.order_by(None).subquery())
