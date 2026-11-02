@@ -7,18 +7,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.repositories import (
     ArtifactRepository,
+    JobRepository,
     OptimizationRunRepository,
     SimulationRunRepository,
     SystemRepository,
 )
-
-
-class RunRepository:
-    """Persists simulation and optimization runs (Phases 3/4)."""
-
-
-class JobRepository:
-    """Persists async job records (Phase 7)."""
 
 
 class UnitOfWork:
@@ -35,6 +28,7 @@ class UnitOfWork:
         self.artifacts: ArtifactRepository | None = None
         self.simulation_runs: SimulationRunRepository | None = None
         self.optimization_runs: OptimizationRunRepository | None = None
+        self.jobs: JobRepository | None = None
         # Convenience aliases used by some services/tests.
         self.simulations: SimulationRunRepository | None = None
         self.optimizations: OptimizationRunRepository | None = None
@@ -49,6 +43,7 @@ class UnitOfWork:
         self.artifacts = ArtifactRepository(session)
         self.simulation_runs = SimulationRunRepository(session)
         self.optimization_runs = OptimizationRunRepository(session)
+        self.jobs = JobRepository(session)
         self.simulations = self.simulation_runs
         self.optimizations = self.optimization_runs
 

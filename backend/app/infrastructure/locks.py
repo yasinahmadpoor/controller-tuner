@@ -1,66 +1,54 @@
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
-from contextlib import contextmanager
 from typing import Any
+from uuid import UUID
 
-from redis import Redis
-
-LOCK_PREFIX = "lock"
-DEFAULT_LOCK_TTL_SECONDS = 120.0
-
-
-def lock_key(kind: str, identifier: str) -> str:
-    return f"{LOCK_PREFIX}:{kind}:{identifier}"
-
-
-def try_lock(
-    redis_client: Redis,
-    key: str,
-    ttl_seconds: float = DEFAULT_LOCK_TTL_SECONDS,
-    token: str | None = None,
-) -> str | None:
-    """Acquire a Redis lock with a random owner token. Returns the token or None.
-
-    Lua atomic SET NX with TTL avoids the classic set-then-expire race.
-    """
-    owner = token or uuid.uuid4().hex
-    acquired = redis_client.set(key, owner, nx=True, ex=max(1, round(ttl_seconds)))
-    if acquired:
-        return owner
-    return None
+_RELEASE_SCRIPT = """
+if redis.call('get', KEYS[1]) == ARGV[1] then
+    return redis.call('del', KEYS[1])
+end
+return 0
+"""
 
 
-def release_lock(redis_client: Redis, key: str, token: str) -> None:
-    """Release the lock only if we still own it (token-safety)."""
-    script = """
-    if redis.call('get', KEYS[1]) == ARGV[1] then
-        return redis.call('del', KEYS[1])
-    else
-        return 0
-    end
-    """
-    redis_client.eval(script, 1, key, token)
+def system_ga_lock_key(system_id: UUID | str) -> str:
+    return f"lock:system:{system_id}:ga"
 
 
-def lock_info(redis_client: Redis, key: str) -> dict[str, Any]:
-    """Best-effort introspection helper: owner ttl + remaining ttl."""
-    owner = redis_client.get(key)
-    ttl = redis_client.ttl(key)
-    return {"held": owner is not None, "ttl": ttl if ttl is not None else None}
+class RedisLock:
+    """Token-safe distributed lock backed by Redis ``SET NX EX``."""
+
+    def __init__(self, redis: Any, key: str, ttl_seconds: int):
+        self._redis = redis
+        self.key = key
+        self.ttl_seconds = max(1, int(ttl_seconds))
+        self.token: str | None = None
+
+    def acquire(self) -> str | None:
+        token = uuid.uuid4().hex
+        acquired = self._redis.set(self.key, token, nx=True, ex=self.ttl_seconds)
+        if acquired:
+            self.token = token
+            return token
+        return None
+
+    def release(self, token: str | None = None) -> bool:
+        candidate = token or self.token
+        if candidate is None:
+            return False
+        released = bool(self._redis.eval(_RELEASE_SCRIPT, 1, self.key, candidate))
+        if released and (token is None or token == self.token):
+            self.token = None
+        return released
 
 
-@contextmanager
-def redis_lock(
-    redis_client: Redis,
-    key: str,
-    ttl_seconds: float = DEFAULT_LOCK_TTL_SECONDS,
-) -> Iterator[str | None]:
-    """Yield the lock token (or None if not acquired). Caller must handle None meaning contention."""
-    token = try_lock(redis_client, key, ttl_seconds=ttl_seconds)
-    try:
-        yield token
-    finally:
-        if token is not None:
-            release_lock(redis_client, key, token)
+def acquire_system_lock(redis: Any, system_id: UUID | str, ttl_seconds: int) -> RedisLock | None:
+    lock = RedisLock(redis, system_ga_lock_key(system_id), ttl_seconds)
+    return lock if lock.acquire() is not None else None
+
+
+def release_system_lock(redis: Any, system_id: UUID | str, token: str | None) -> bool:
+    if not token:
+        return False
+    return RedisLock(redis, system_ga_lock_key(system_id), 1).release(token)

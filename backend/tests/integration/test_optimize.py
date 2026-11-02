@@ -142,18 +142,6 @@ def test_optimize_rejects_invalid_ranges(client: TestClient):
     assert response.status_code == 422
 
 
-def test_optimize_rejects_async_until_phase_7(client: TestClient):
-    system_id = _create_ball_beam(client)
-
-    response = client.post(
-        f"/api/v1/systems/{system_id}/optimize",
-        json=_optimize_payload(**{"async": True}),
-    )
-
-    assert response.status_code == 422
-    assert response.json()["error"]["code"] == "invalid_parameters"
-
-
 def test_optimize_requires_capability(client: TestClient):
     created = client.post(
         "/api/v1/systems",

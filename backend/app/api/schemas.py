@@ -314,21 +314,33 @@ class OptimizationRunDetail(BaseModel):
     finished_at: datetime | None = None
 
 
-class JobLink(BaseModel):
+class JobLinks(BaseModel):
     self: str
     events: str
     run: str
 
 
+class OptimizeJobResponse(BaseModel):
+    job_id: UUID
+    run_id: UUID
+    status: JobStatus
+    links: JobLinks
+
+
 class JobResponse(BaseModel):
     job_id: UUID
     run_id: UUID
-    run_type: RunType
+    system_id: UUID | None = None
     status: JobStatus
-    progress: dict[str, Any] | None = None
+    progress: dict[str, Any] = Field(default_factory=dict)
+    cancel_requested: bool = False
     result: dict[str, Any] | None = None
     error: dict[str, Any] | None = None
-    links: JobLink | None = None
+    worker_id: str | None = None
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    expires_at: datetime | None = None
 
 
 class RunSummary(BaseModel):

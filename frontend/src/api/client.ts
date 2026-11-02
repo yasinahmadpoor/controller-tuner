@@ -2,6 +2,8 @@ import type {
   CatalogResponse,
   ControllerType,
   OptimizationRunDetail,
+  JobResponse,
+  OptimizeJobResponse,
   OptimizeRequest,
   OptimizeResult,
   ParamSchemaResponse,
@@ -144,6 +146,28 @@ export function optimize(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export function enqueueOptimize(
+  systemId: string,
+  payload: OptimizeRequest,
+): Promise<OptimizeJobResponse> {
+  return request<OptimizeJobResponse>(`/systems/${systemId}/optimize`, {
+    method: "POST",
+    body: JSON.stringify({ ...payload, async: true }),
+  });
+}
+
+export function getJob(jobId: string): Promise<JobResponse> {
+  return request<JobResponse>(`/jobs/${jobId}`);
+}
+
+export function cancelJob(jobId: string): Promise<JobResponse> {
+  return request<JobResponse>(`/jobs/${jobId}/cancel`, { method: "POST" });
+}
+
+export function jobEventsUrl(jobId: string): string {
+  return `${API_BASE}/jobs/${jobId}/events`;
 }
 
 export function listOptimizations(

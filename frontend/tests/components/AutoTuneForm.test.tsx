@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AutoTuneForm } from "../../src/components/auto/AutoTuneForm";
 import { AutoTuneTab } from "../../src/components/auto/AutoTuneTab";
 import {
+  optimizeJobFixture,
   optimizeResultFixture,
   systemFixture,
 } from "../../src/test/fixtures";
@@ -24,6 +25,7 @@ describe("AutoTuneForm", () => {
     expect(screen.getByLabelText("Generations")).toHaveValue(30);
     expect(screen.getByLabelText("Seed")).toHaveValue(42);
     expect(screen.getByLabelText("Max wall clock")).toHaveValue(120);
+    expect(screen.getByLabelText("Run in background (async)")).toBeChecked();
   });
 
   it("restores defaults after edits", async () => {
@@ -86,10 +88,34 @@ describe("AutoTuneForm", () => {
     );
     renderWithProviders(<AutoTuneForm system={systemFixture} onOptimized={onOptimized} />);
 
+    await user.click(screen.getByLabelText("Run in background (async)"));
     await user.click(screen.getByRole("button", { name: "Run optimization" }));
 
     await waitFor(() => expect(onOptimized).toHaveBeenCalled());
     expect(onOptimized.mock.calls[0][0]).toEqual(optimizeResultFixture);
     expect(onOptimized.mock.calls[0][1]).toMatchObject({ mse: 0.05 });
+  });
+
+  it("queues a background optimization by default", async () => {
+    const user = userEvent.setup();
+    const onJobCreated = vi.fn();
+    server.use(
+      http.post("*/api/v1/systems/*/optimize", () =>
+        HttpResponse.json(optimizeJobFixture, { status: 202 }),
+      ),
+    );
+    renderWithProviders(
+      <AutoTuneForm
+        system={systemFixture}
+        onOptimized={vi.fn()}
+        onJobCreated={onJobCreated}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Run optimization" }));
+
+    await waitFor(() => expect(onJobCreated).toHaveBeenCalled());
+    expect(onJobCreated.mock.calls[0][0]).toEqual(optimizeJobFixture);
+    expect(onJobCreated.mock.calls[0][1]).toMatchObject({ mse: 0.05 });
   });
 });

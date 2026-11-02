@@ -5,11 +5,14 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Request, status
+from fastapi.responses import JSONResponse
 
 from app.api.schemas import (
+    JobLinks,
     OptimizationRunDetail,
     OptimizationRunListResponse,
     OptimizationRunSummary,
+    OptimizeJobResponse,
     OptimizeRequest,
     OptimizeResult,
     TargetHit,
@@ -28,8 +31,31 @@ def get_optimization_service(request: Request) -> OptimizationService:
     return service
 
 
-@router.post("/systems/{system_id}/optimize", response_model=OptimizeResult)
-def optimize(system_id: str, payload: OptimizeRequest, request: Request) -> OptimizeResult:
+@router.post(
+    "/systems/{system_id}/optimize",
+    response_model=OptimizeResult | OptimizeJobResponse,
+    responses={202: {"model": OptimizeJobResponse}},
+)
+def optimize(
+    system_id: str, payload: OptimizeRequest, request: Request
+) -> OptimizeResult | OptimizeJobResponse | JSONResponse:
+    if payload.async_:
+        job_service = request.app.state.context.job_service  # type: ignore[attr-defined]
+        job, run = job_service.enqueue_optimization(system_id, payload)
+        response = OptimizeJobResponse(
+            job_id=job.id,
+            run_id=run.id,
+            status=job.status,
+            links=JobLinks(
+                self=f"/api/v1/jobs/{job.id}",
+                events=f"/api/v1/jobs/{job.id}/events",
+                run=f"/api/v1/optimizations/{run.id}",
+            ),
+        )
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content=response.model_dump(mode="json"),
+        )
     service = get_optimization_service(request)
     run, result = service.optimize(system_id, payload)
     return OptimizeResult(

@@ -14,9 +14,11 @@ uses the keyword form so it is immune to the positional drift.
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from app.core.cancellation import JobCancelled
 from app.core.json_safe import json_safe
 from app.domain.models import Engine, SystemSpec
 from app.engines.loader import ga, manual
@@ -183,6 +185,8 @@ class AutoTuneEngineAdapter:
         *,
         code_path: str | Path | None = None,
         overrides: Any | None = None,
+        progress_callback: Callable[[dict[str, Any]], None] | None = None,
+        cancel_check: Callable[[], bool] | None = None,
     ) -> dict[str, Any]:
         param_ranges, weights, fixed_targets, ga_config = _merge_optimization_defaults(
             spec, request if request is not None else {}
@@ -195,11 +199,31 @@ class AutoTuneEngineAdapter:
         dynamics = load_dynamics_callable(spec, resolved)
         simulator = ga()["SystemSimulator"](dynamics, build_ga_sim_config(spec, overrides))
         optimizer = ga()["GAOptimizer"](simulator, ga_config)
-        raw = optimizer.optimize_pid(
-            weights=weights,
-            param_ranges=param_ranges,
-            fixed_targets=fixed_targets,
-        )
+
+        registry = ga()
+        registered = False
+        if progress_callback is not None or cancel_check is not None:
+            register = registry.get("register_callback")
+            if register is not None:
+
+                def _on_event(event: dict[str, Any]) -> None:
+                    if cancel_check is not None and cancel_check():
+                        raise JobCancelled()
+                    if progress_callback is not None:
+                        progress_callback(event)
+
+                register(_on_event)
+                registered = True
+        try:
+            raw = optimizer.optimize_pid(
+                weights=weights,
+                param_ranges=param_ranges,
+                fixed_targets=fixed_targets,
+            )
+        finally:
+            unregister = registry.get("unregister_callback")
+            if registered and unregister is not None:
+                unregister()
         return normalize_optimize_result(raw)
 
 

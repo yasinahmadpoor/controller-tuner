@@ -206,6 +206,37 @@ export interface OptimizeResult {
   non_finite_metrics: string[];
 }
 
+export type JobStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled";
+
+export interface JobLinks {
+  self: string;
+  events: string;
+  run: string;
+}
+
+export interface OptimizeJobResponse {
+  job_id: string;
+  run_id: string;
+  status: JobStatus;
+  links: JobLinks;
+}
+
+export interface JobResponse {
+  job_id: string;
+  run_id: string;
+  system_id: string | null;
+  status: JobStatus;
+  progress: Record<string, unknown>;
+  cancel_requested: boolean;
+  result: OptimizeResult | null;
+  error: { type?: string; message?: string } | null;
+  worker_id: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  expires_at: string | null;
+}
+
 export interface OptimizationRunDetail {
   run_id: string;
   system_id: string;

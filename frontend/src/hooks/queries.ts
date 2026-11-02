@@ -5,8 +5,11 @@ import {
 } from "@tanstack/react-query";
 
 import {
+  cancelJob,
   deleteRun,
+  enqueueOptimize,
   getCatalog,
+  getJob,
   getRun,
   getSchema,
   getSystem,
@@ -30,6 +33,7 @@ const schemaKey = (systemId: string, type: ControllerType) =>
 const runsKey = (systemId: string, type: RunType) =>
   ["runs", systemId, type] as const;
 const runKey = (runId: string, type: RunType) => ["run", runId, type] as const;
+const jobKey = (jobId: string) => ["job", jobId] as const;
 
 export function useCatalog() {
   return useQuery({
@@ -77,6 +81,42 @@ export function useOptimize(systemId: string) {
       void queryClient.invalidateQueries({
         queryKey: runsKey(systemId, "optimization"),
       });
+    },
+  });
+}
+
+export function useEnqueueOptimize(systemId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: OptimizeRequest) => enqueueOptimize(systemId, payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: runsKey(systemId, "optimization"),
+      });
+    },
+  });
+}
+
+export function useJob(jobId: string | undefined) {
+  return useQuery({
+    queryKey: jobKey(jobId ?? ""),
+    queryFn: () => getJob(jobId as string),
+    enabled: Boolean(jobId),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "succeeded" || status === "failed" || status === "cancelled"
+        ? false
+        : 1_000;
+    },
+  });
+}
+
+export function useCancelJob(jobId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => cancelJob(jobId as string),
+    onSuccess: (job) => {
+      queryClient.setQueryData(jobKey(job.job_id), job);
     },
   });
 }

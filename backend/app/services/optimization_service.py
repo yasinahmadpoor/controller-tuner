@@ -139,6 +139,9 @@ class OptimizationService:
     # ------------------------------------------------------------------ #
     # Validation
     # ------------------------------------------------------------------ #
+    def validate_request(self, spec: SystemSpec, request: OptimizeRequest) -> None:
+        self._validate_request(spec, request)
+
     def _validate_request(self, spec: SystemSpec, request: OptimizeRequest) -> None:
         defaults = spec.optimization
         ranges = dict(defaults.param_ranges)

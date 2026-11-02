@@ -61,6 +61,7 @@ def test_database_schema_has_only_alembic_version_table(ready_dependencies, test
         "systems",
         "simulation_runs",
         "optimization_runs",
+        "jobs",
     }
 
 
@@ -91,6 +92,7 @@ def test_upgrade_followed_by_migration_state(clean_database, test_env):
         "systems",
         "simulation_runs",
         "optimization_runs",
+        "jobs",
     }
     current, head = _read_current_head(os.environ["DATABASE_URL"])
     assert current == head

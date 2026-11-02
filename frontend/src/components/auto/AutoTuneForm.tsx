@@ -1,7 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { useForm, type UseFormRegisterReturn } from "react-hook-form";
 
-import { useOptimize } from "../../hooks/queries";
+import { useEnqueueOptimize, useOptimize } from "../../hooks/queries";
 import { getErrorMessage } from "../../lib/errors";
 import { formatMetric, metricLabel } from "../../lib/format";
 import {
@@ -12,7 +13,7 @@ import {
   toOptimizeRequest,
   type OptimizationFormValues,
 } from "../../lib/optimizationForm";
-import type { OptimizeResult, SystemSummary } from "../../types/api";
+import type { OptimizeJobResponse, OptimizeResult, SystemSummary } from "../../types/api";
 import { ErrorBanner } from "../common/ErrorBanner";
 import { useToast } from "../common/ToastHost";
 
@@ -45,15 +46,26 @@ function NumberInput({
 export function AutoTuneForm({
   system,
   onOptimized,
+  onJobCreated,
 }: {
   system: SystemSummary;
   onOptimized: (
     result: OptimizeResult,
     targets: OptimizationFormValues["fixed_targets"],
   ) => void;
+  onJobCreated?: (
+    job: OptimizeJobResponse,
+    targets: OptimizationFormValues["fixed_targets"],
+  ) => void;
 }) {
   const defaults = defaultsFromSystem(system);
+  const defaultBackground =
+    defaults.ga.population_size >= 20 ||
+    defaults.ga.generations >= 20 ||
+    defaults.ga.max_wall_clock >= 60;
   const optimize = useOptimize(system.system_id);
+  const enqueue = useEnqueueOptimize(system.system_id);
+  const [background, setBackground] = useState(defaultBackground);
   const { pushToast } = useToast();
   const {
     register,
@@ -68,12 +80,24 @@ export function AutoTuneForm({
 
   async function submit(values: OptimizationFormValues) {
     try {
-      const result = await optimize.mutateAsync(toOptimizeRequest(values));
+      const payload = toOptimizeRequest(values);
+      if (background) {
+        const job = await enqueue.mutateAsync(payload);
+        onJobCreated?.(job, values.fixed_targets);
+        pushToast("Optimization queued", "success");
+        return;
+      }
+      const result = await optimize.mutateAsync(payload);
       onOptimized(result, values.fixed_targets);
       pushToast("Optimization saved to history", "success");
     } catch {
       // Rendered by the error banner below.
     }
+  }
+
+  function resetDefaults() {
+    reset(defaults);
+    setBackground(defaultBackground);
   }
 
   return (
@@ -92,7 +116,7 @@ export function AutoTuneForm({
         </div>
         <button
           type="button"
-          onClick={() => reset(defaults)}
+          onClick={resetDefaults}
           className="btn-secondary"
         >
           Reset to defaults
@@ -186,27 +210,44 @@ export function AutoTuneForm({
         </div>
       </fieldset>
 
-      {optimize.isError ? (
+      {enqueue.isError || optimize.isError ? (
         <div className="mt-5">
           <ErrorBanner
             title="Optimization failed"
-            message={getErrorMessage(optimize.error)}
-            onDismiss={() => optimize.reset()}
+            message={getErrorMessage(enqueue.error ?? optimize.error)}
+            onDismiss={() => {
+              enqueue.reset();
+              optimize.reset();
+            }}
           />
         </div>
       ) : null}
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-slate-500">
-          Current target MSE:{" "}
-          <span className="font-semibold">{formatMetric(defaults.fixed_targets.mse)}</span>
-        </p>
+        <div className="space-y-1">
+          <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+            <input
+              type="checkbox"
+              checked={background}
+              onChange={(event) => setBackground(event.target.checked)}
+              className="h-4 w-4 rounded border-slate-300 accent-accent-600"
+            />
+            Run in background (async)
+          </label>
+          <p className="text-xs text-slate-500">
+            Long runs default to Celery with live progress. Uncheck to run synchronously.
+          </p>
+          <p className="text-xs text-slate-500">
+            Current target MSE:{" "}
+            <span className="font-semibold">{formatMetric(defaults.fixed_targets.mse)}</span>
+          </p>
+        </div>
         <button
           type="submit"
-          disabled={optimize.isPending || isSubmitting}
+          disabled={optimize.isPending || enqueue.isPending || isSubmitting}
           className="btn-primary min-w-40"
         >
-          {optimize.isPending || isSubmitting ? (
+          {optimize.isPending || enqueue.isPending || isSubmitting ? (
             <>
               <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
               Optimizing…

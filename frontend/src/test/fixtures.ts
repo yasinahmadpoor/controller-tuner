@@ -1,6 +1,8 @@
 import type {
   CatalogEntry,
+  JobResponse,
   OptimizationRunDetail,
+  OptimizeJobResponse,
   OptimizeResult,
   ParamSchemaResponse,
   RunSummary,
@@ -164,4 +166,40 @@ export const optimizationDetailFixture: OptimizationRunDetail = {
   created_at: "2026-01-02T00:00:00Z",
   started_at: "2026-01-02T00:00:00Z",
   finished_at: "2026-01-02T00:00:02Z",
+};
+
+
+export const optimizeJobFixture: OptimizeJobResponse = {
+  job_id: "44444444-4444-4444-4444-444444444444",
+  run_id: optimizationRun.run_id,
+  status: "queued",
+  links: {
+    self: "/api/v1/jobs/44444444-4444-4444-4444-444444444444",
+    events: "/api/v1/jobs/44444444-4444-4444-4444-444444444444/events",
+    run: `/api/v1/optimizations/${optimizationRun.run_id}`,
+  },
+};
+
+export const runningJobFixture: JobResponse = {
+  job_id: optimizeJobFixture.job_id,
+  run_id: optimizeJobFixture.run_id,
+  system_id: systemFixture.system_id,
+  status: "running",
+  progress: {
+    generation: 12,
+    cumulative_nfe: 480,
+    cumulative_wall_time: 9.4,
+    best_score_so_far: 75,
+    Kp: 14.2,
+    Ki: 0.31,
+    Kd: 5.6,
+  },
+  cancel_requested: false,
+  result: null,
+  error: null,
+  worker_id: "worker-1",
+  created_at: "2026-01-02T00:00:00Z",
+  started_at: "2026-01-02T00:00:00Z",
+  finished_at: null,
+  expires_at: null,
 };

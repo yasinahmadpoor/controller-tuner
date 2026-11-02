@@ -1,18 +1,25 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import type {
   MetricName,
+  OptimizeJobResponse,
   OptimizeResult,
   SystemSummary,
 } from "../../types/api";
 import { AutoTuneResults } from "../results/AutoTuneResults";
 import { AutoTuneForm } from "./AutoTuneForm";
+import { JobProgressPanel } from "./JobProgressPanel";
 
 export function AutoTuneTab({ system }: { system: SystemSummary }) {
   const [result, setResult] = useState<OptimizeResult | null>(null);
+  const [job, setJob] = useState<OptimizeJobResponse | null>(null);
   const [targets, setTargets] = useState<Partial<Record<MetricName, number>>>(
     system.optimization.fixed_targets,
   );
+  const handleSucceeded = useCallback((next: OptimizeResult) => {
+    setResult(next);
+    setJob(null);
+  }, []);
 
   if (!system.capabilities.includes("optimize")) {
     return (
@@ -34,10 +41,22 @@ export function AutoTuneTab({ system }: { system: SystemSummary }) {
         system={system}
         onOptimized={(nextResult, submittedTargets) => {
           setResult(nextResult);
+          setJob(null);
+          setTargets(submittedTargets);
+        }}
+        onJobCreated={(nextJob, submittedTargets) => {
+          setResult(null);
+          setJob(nextJob);
           setTargets(submittedTargets);
         }}
       />
-      {result ? (
+      {job ? (
+        <JobProgressPanel
+          jobId={job.job_id}
+          onSucceeded={handleSucceeded}
+          onReset={() => setJob(null)}
+        />
+      ) : result ? (
         <AutoTuneResults result={result} targets={targets} />
       ) : (
         <section className="card grid min-h-[240px] place-items-center p-8 text-center">

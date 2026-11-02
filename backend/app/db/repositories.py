@@ -8,6 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.artifact import ArtifactModel
+from app.db.models.job import JobModel
 from app.db.models.optimization_run import OptimizationRunModel
 from app.db.models.simulation_run import SimulationRunModel
 from app.db.models.system import SystemModel
@@ -308,4 +309,139 @@ class OptimizationRunRepository(BaseRepository):
 
     def delete_expired(self, now: datetime) -> list[OptimizationRunModel]:
         stmt = select(OptimizationRunModel).where(OptimizationRunModel.expires_at < now)
+        return list(self.session.scalars(stmt))
+
+    def finish(
+        self,
+        run: OptimizationRunModel,
+        *,
+        status: str,
+        result: dict[str, Any] | None = None,
+        error: dict[str, Any] | None = None,
+        duration_ms: int | None = None,
+        started_at: datetime | None = None,
+        finished_at: datetime | None = None,
+    ) -> OptimizationRunModel:
+        payload = result or {}
+        run.status = status
+        run.best_params = payload.get("controller_parameters", {})
+        run.achieved_metrics = payload.get("achieved_metrics", {})
+        run.progress = payload.get("progress", {})
+        run.stop_reason = payload.get("stop_reason")
+        run.num_evaluations = payload.get("num_evaluations")
+        run.target_hit = payload.get("target_hit")
+        run.warnings = payload.get("warnings", [])
+        run.non_finite_metrics = payload.get("non_finite_metrics", [])
+        run.ga_cost = payload.get("ga_cost")
+        run.baseline_cost = payload.get("baseline_cost")
+        run.error = error
+        run.duration_ms = duration_ms
+        if started_at is not None:
+            run.started_at = started_at
+        run.finished_at = finished_at or datetime.now(UTC)
+        return run
+
+
+_TERMINAL_JOB_STATUSES = {"succeeded", "failed", "cancelled"}
+_ALLOWED_JOB_TRANSITIONS: dict[str, set[str]] = {
+    "queued": {"running", "failed", "cancelled"},
+    "running": {"succeeded", "failed", "cancelled"},
+}
+
+
+class JobRepository(BaseRepository):
+    """Persistence and state transitions for async jobs (Phase 7)."""
+
+    def create(
+        self,
+        *,
+        run_id: UUID,
+        run_type: str = "optimization",
+        status: str = "queued",
+        progress: dict[str, Any] | None = None,
+        lock_token: str | None = None,
+        expires_at: datetime | None = None,
+    ) -> JobModel:
+        job = JobModel(
+            id=uuid4(),
+            run_id=run_id,
+            run_type=run_type,
+            status=status,
+            progress=progress or {},
+            cancel_requested=False,
+            lock_token=lock_token,
+            created_at=datetime.now(UTC),
+            expires_at=expires_at,
+        )
+        self.session.add(job)
+        return job
+
+    def get(self, job_id: UUID) -> JobModel | None:
+        return self.session.get(JobModel, job_id)
+
+    def list_active(self) -> list[JobModel]:
+        stmt = select(JobModel).where(JobModel.status.in_(("queued", "running")))
+        return list(self.session.scalars(stmt))
+
+    def transition(
+        self,
+        job: JobModel,
+        status: str,
+        *,
+        worker_id: str | None = None,
+        progress: dict[str, Any] | None = None,
+        error: dict[str, Any] | None = None,
+    ) -> bool:
+        if job.status in _TERMINAL_JOB_STATUSES:
+            return False
+        if status not in _ALLOWED_JOB_TRANSITIONS.get(job.status, set()):
+            return False
+        now = datetime.now(UTC)
+        job.status = status
+        if worker_id is not None:
+            job.worker_id = worker_id
+        if progress is not None:
+            job.progress = progress
+        if error is not None:
+            job.error = error
+        if status == "running" and job.started_at is None:
+            job.started_at = now
+        if status in _TERMINAL_JOB_STATUSES:
+            job.finished_at = now
+        return True
+
+    def mark_running(self, job: JobModel, *, worker_id: str | None = None) -> bool:
+        if job.status == "running":
+            if worker_id is not None:
+                job.worker_id = worker_id
+            return True
+        return self.transition(job, "running", worker_id=worker_id)
+
+    def mark_succeeded(self, job: JobModel, *, progress: dict[str, Any] | None = None) -> bool:
+        return self.transition(job, "succeeded", progress=progress)
+
+    def mark_failed(
+        self,
+        job: JobModel,
+        *,
+        error: dict[str, Any] | None = None,
+        progress: dict[str, Any] | None = None,
+    ) -> bool:
+        return self.transition(job, "failed", error=error, progress=progress)
+
+    def mark_cancelled(self, job: JobModel, *, progress: dict[str, Any] | None = None) -> bool:
+        return self.transition(job, "cancelled", progress=progress)
+
+    def request_cancel(self, job: JobModel) -> bool:
+        if job.status in _TERMINAL_JOB_STATUSES:
+            return False
+        job.cancel_requested = True
+        return True
+
+    def delete(self, job_id: UUID) -> bool:
+        count = self.session.execute(delete(JobModel).where(JobModel.id == job_id)).rowcount
+        return bool(count)
+
+    def delete_expired(self, now: datetime) -> list[JobModel]:
+        stmt = select(JobModel).where(JobModel.expires_at < now)
         return list(self.session.scalars(stmt))
