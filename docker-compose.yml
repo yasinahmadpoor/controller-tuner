@@ -1,0 +1,154 @@
+name: controller-tuner
+
+x-app-environment: &app-environment
+  APP_ENV: production
+  DATABASE_URL: postgresql+psycopg://tuner:${POSTGRES_PASSWORD:-tuner}@postgres:5432/controller_tuner
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/1
+  GA_ENGINE_REPO: /app/engines/gaTunerPID
+  MANUAL_ENGINE_REPO: /app/engines/tunerPID
+  ARTIFACT_DIR: /data/artifacts
+  ARTIFACT_BACKEND: local
+  CORS_ORIGINS: ""
+  MAX_UPLOAD_BYTES: "262144"
+  SYSTEM_TTL_SECONDS: "86400"
+  JOB_RETENTION_SECONDS: "3600"
+  RUN_RETENTION_DAYS: "30"
+  GA_QUEUE_MAX_DEPTH: "20"
+  GA_TASK_SOFT_TIME_LIMIT: "180"
+  GA_TASK_TIME_LIMIT: "240"
+  MAX_CONCURRENT_GA_JOBS: "1"
+  PERSIST_TRAJECTORIES: "true"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: controller_tuner
+      POSTGRES_USER: tuner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tuner}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tuner -d controller_tuner"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/docker/backend.Dockerfile
+    command: ["/app/docker/entrypoint-migrate.sh"]
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/docker/backend.Dockerfile
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "8000:8000"
+    volumes:
+      - artifacts_data:/data/artifacts
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: backend/docker/worker.Dockerfile
+    command:
+      - sh
+      - -c
+      - celery -A app.workers.celery_app:celery_app worker -Q ga,maintenance --loglevel=INFO --concurrency=${MAX_CONCURRENT_GA_JOBS:-1}
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - artifacts_data:/data/artifacts
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.workers.celery_app:celery_app inspect ping >/dev/null 2>&1 || exit 1"]
+      interval: 20s
+      timeout: 10s
+      start_period: 30s
+      retries: 5
+    restart: unless-stopped
+
+  beat:
+    build:
+      context: .
+      dockerfile: backend/docker/worker.Dockerfile
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - beat
+      - --loglevel=INFO
+      - --pidfile=/tmp/celerybeat.pid
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    volumes:
+      - artifacts_data:/data/artifacts
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /tmp/celerybeat.pid && kill -0 $$(cat /tmp/celerybeat.pid)"]
+      interval: 20s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  artifacts_data:

@@ -35,12 +35,17 @@ class WorkerRuntime:
         self.engine.dispose()
 
 
+def _catalog_root(settings: Settings) -> Path:
+    ga_repo = Path(settings.ga_engine_repo)
+    return ga_repo.parent if ga_repo.name == "gaTunerPID" else _REPO_ROOT
+
+
 def build_worker_runtime(settings: Settings | None = None) -> WorkerRuntime:
     settings = settings or get_settings()
     engine = create_db_engine(settings)
     session_factory = create_session_factory(engine)
     storage = create_storage(settings.artifact_backend, local_dir=str(settings.artifact_dir))
-    catalog = CatalogService(repo_root=_REPO_ROOT)
+    catalog = CatalogService(repo_root=_catalog_root(settings))
     system_service = SystemService(
         session_factory=session_factory,
         storage=storage,

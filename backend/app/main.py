@@ -76,6 +76,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("shutdown_complete")
 
 
+def _catalog_root(settings: Settings) -> Path:
+    ga_repo = Path(settings.ga_engine_repo)
+    return ga_repo.parent if ga_repo.name == "gaTunerPID" else _REPO_ROOT
+
+
 def build_context(settings: Settings) -> AppContext:
     engine = create_db_engine(settings)
     session_factory = create_session_factory(engine)
@@ -85,7 +90,7 @@ def build_context(settings: Settings) -> AppContext:
     context = AppContext(settings=settings, redis=RedisClients(settings), storage=storage)
     context.engine = engine
     context.session_factory = session_factory
-    context.catalog = CatalogService(repo_root=_REPO_ROOT)
+    context.catalog = CatalogService(repo_root=_catalog_root(settings))
     context.system_service = SystemService(
         session_factory=session_factory,
         storage=storage,

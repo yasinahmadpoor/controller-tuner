@@ -1,0 +1,16 @@
+.git/
+.gitignore
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.ruff_cache/
+**/.venv/
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+backend/data/
+backend/.pytest_cache/
+.env
+.env.local
+Dockerfile
+docker-compose*.yml
