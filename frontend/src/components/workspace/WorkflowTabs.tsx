@@ -10,22 +10,6 @@ export function WorkflowTabs({ systemId }: { systemId: string }) {
   return (
     <nav className="flex flex-wrap gap-2" aria-label="Workflow tabs">
       {tabs.map((tab) => {
-        const disabled = tab.id === "auto";
-        if (disabled) {
-          return (
-            <span
-              key={tab.id}
-              title="Auto-tune UI arrives in Phase 6"
-              aria-disabled="true"
-              className="inline-flex cursor-not-allowed items-center rounded-xl border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400"
-            >
-              {tab.label}
-              <span className="ml-2 rounded-full bg-slate-200 px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                Soon
-              </span>
-            </span>
-          );
-        }
         return (
           <NavLink
             key={tab.id}

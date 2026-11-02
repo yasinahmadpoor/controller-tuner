@@ -98,6 +98,14 @@ export function RunHistoryList({
                           <span className="text-slate-400">{key}:</span> {value}
                         </span>
                       ))}
+                      {run.best_params
+                        ? Object.entries(run.best_params).map(([name, value]) => (
+                            <span key={`gain-${name}`}>
+                              <span className="text-slate-400">{name}:</span>{" "}
+                              {formatMetric(value)}
+                            </span>
+                          ))
+                        : null}
                       {run.stop_reason ? (
                         <span>
                           <span className="text-slate-400">stop:</span> {run.stop_reason}

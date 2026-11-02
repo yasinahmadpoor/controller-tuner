@@ -77,6 +77,7 @@ def list_optimizations(
                     for key in ("mse", "settling_time", "overshoot", "control_effort")
                     if key in (run.achieved_metrics or {})
                 },
+                best_params=dict(run.best_params or {}),
             )
             for run in runs
         ],

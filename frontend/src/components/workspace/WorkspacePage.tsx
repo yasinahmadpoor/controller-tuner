@@ -5,6 +5,7 @@ import { useSystem } from "../../hooks/queries";
 import type { SimulateResult } from "../../types/api";
 import { ErrorBanner } from "../common/ErrorBanner";
 import { LoadingSpinner } from "../common/LoadingSpinner";
+import { AutoTuneTab } from "../auto/AutoTuneTab";
 import { HistoryTab } from "../history/HistoryTab";
 import { ManualTuningTab } from "../manual/ManualTuningTab";
 import { SystemSummaryCard } from "./SystemSummaryCard";
@@ -92,11 +93,7 @@ export function WorkspacePage() {
           onResult={saveResult}
         />
       ) : null}
-      {tab === "auto" ? (
-        <div className="card p-6 text-sm text-slate-600">
-          Auto-tune configuration arrives in Phase 6.
-        </div>
-      ) : null}
+      {tab === "auto" ? <AutoTuneTab key={system.data.system_id} system={system.data} /> : null}
       {tab === "history" ? <HistoryTab systemId={systemId} /> : null}
     </div>
   );

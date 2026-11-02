@@ -1,7 +1,7 @@
 import { Link, useParams, useSearchParams } from "react-router-dom";
 
 import { useRun } from "../../hooks/queries";
-import { formatDate, formatMetric, formatNumber, metricLabel } from "../../lib/format";
+import { formatDate, formatMetric, formatNumber } from "../../lib/format";
 import type {
   OptimizationRunDetail,
   RunType,
@@ -12,6 +12,9 @@ import { LoadingSpinner } from "../common/LoadingSpinner";
 import { StabilityBadge } from "../common/StabilityBadge";
 import { ControlChart } from "../results/ControlChart";
 import { MetricsPanel } from "../results/MetricsPanel";
+import { MetricsVsTargetsTable } from "../results/MetricsVsTargetsTable";
+import { ProgressCharts } from "../results/ProgressCharts";
+import { StopReasonBadge } from "../results/StopReasonBadge";
 import { TrajectoryChart } from "../results/TrajectoryChart";
 import { getErrorMessage } from "../../lib/errors";
 import { readRunTrajectory } from "../../lib/runCache";
@@ -77,6 +80,16 @@ function SimulationDetail({ detail }: { detail: SimulationRunDetail }) {
 }
 
 function OptimizationDetail({ detail }: { detail: OptimizationRunDetail }) {
+  const rawTargets = detail.request?.fixed_targets;
+  const targets =
+    rawTargets !== null && typeof rawTargets === "object"
+      ? Object.fromEntries(
+          Object.entries(rawTargets as Record<string, unknown>).filter(
+            (entry): entry is [string, number] =>
+              typeof entry[1] === "number" && Number.isFinite(entry[1]),
+          ),
+        )
+      : {};
   return (
     <div className="space-y-4">
       <section className="card p-5">
@@ -88,9 +101,7 @@ function OptimizationDetail({ detail }: { detail: OptimizationRunDetail }) {
               {formatDate(detail.created_at)}
             </p>
           </div>
-          <span className="rounded-full bg-accent-50 px-3 py-1 text-xs font-semibold text-accent-700">
-            {detail.stop_reason ?? detail.status}
-          </span>
+          <StopReasonBadge stopReason={detail.stop_reason} />
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           {Object.entries(detail.best_params).map(([name, value]) => (
@@ -104,26 +115,24 @@ function OptimizationDetail({ detail }: { detail: OptimizationRunDetail }) {
         </div>
       </section>
 
+      <MetricsVsTargetsTable metrics={detail.achieved_metrics} targets={targets} />
+
       <section className="card p-5">
-        <h2 className="text-base font-bold text-slate-900">Achieved metrics</h2>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-          {Object.entries(detail.achieved_metrics)
-            .filter(([, value]) => typeof value === "number" || value === null)
-            .map(([key, value]) => (
-              <div key={key} className="flex justify-between rounded-xl bg-slate-50 px-3 py-2 text-sm">
-                <dt className="text-slate-600">{metricLabel(key)}</dt>
-                <dd className="font-mono font-semibold text-slate-900">
-                  {formatMetric(value as number | null)}
-                </dd>
-              </div>
-            ))}
-        </dl>
-        <p className="mt-4 text-sm text-slate-600">
+        <p className="text-sm text-slate-600">
           Evaluations: <strong>{detail.num_evaluations ?? "—"}</strong> · GA cost:{" "}
           <strong>{formatMetric(detail.ga_cost)}</strong> · Baseline cost:{" "}
           <strong>{formatMetric(detail.baseline_cost)}</strong>
         </p>
+        {detail.warnings.length > 0 ? (
+          <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-amber-800">
+            {detail.warnings.map((warning, index) => (
+              <li key={`${warning}-${index}`}>{warning}</li>
+            ))}
+          </ul>
+        ) : null}
       </section>
+
+      <ProgressCharts progress={detail.progress} />
     </div>
   );
 }

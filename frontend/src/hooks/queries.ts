@@ -109,6 +109,14 @@ export function useSystemRuns(
   });
 }
 
+export function useOptimizationRuns(
+  systemId: string | undefined,
+  limit = 20,
+  offset = 0,
+) {
+  return useSystemRuns(systemId, "optimization", limit, offset);
+}
+
 export function useRun(
   runId: string | undefined,
   type: RunType,

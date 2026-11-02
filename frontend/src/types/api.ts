@@ -134,6 +134,7 @@ export interface RunSummary {
   summary?: Record<string, MetricValue | boolean>;
   controller_type?: ControllerType;
   stop_reason?: string | null;
+  best_params?: Record<string, number>;
 }
 
 export interface RunListResponse {

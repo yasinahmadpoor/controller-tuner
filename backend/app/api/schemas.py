@@ -277,6 +277,7 @@ class OptimizationRunSummary(BaseModel):
     duration_ms: int | None = None
     created_at: datetime
     summary: dict[str, Any] = Field(default_factory=dict)
+    best_params: dict[str, float] = Field(default_factory=dict)
 
 
 class OptimizationRunListResponse(BaseModel):

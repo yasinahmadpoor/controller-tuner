@@ -128,6 +128,7 @@ def test_optimize_is_seeded_and_lists_history(client: TestClient):
     assert body["items"][0]["summary"]["mse"] == pytest.approx(
         second.json()["achieved_metrics"]["mse"]
     )
+    assert body["items"][0]["best_params"] == second.json()["controller_parameters"]
 
 
 def test_optimize_rejects_invalid_ranges(client: TestClient):
