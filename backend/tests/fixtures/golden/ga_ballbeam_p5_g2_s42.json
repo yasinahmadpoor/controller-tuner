@@ -1,0 +1,177 @@
+{
+  "description": "GA engine BallBeam seeded smoke baseline",
+  "inputs": {
+    "case_study": "gaTunerPID/case_studies/json/BallBeam.json",
+    "fixed_targets": {
+      "control_effort": 0.1,
+      "mse": 0.05,
+      "overshoot": 1.0,
+      "settling_time": 1.0
+    },
+    "ga_config": {
+      "generations": 2,
+      "population_size": 5,
+      "seed": 42
+    },
+    "param_ranges": {
+      "Kd": [
+        0.01,
+        10.0
+      ],
+      "Ki": [
+        0.01,
+        5.0
+      ],
+      "Kp": [
+        1.0,
+        50.0
+      ]
+    },
+    "simulation_overrides": {
+      "dt": 0.01,
+      "max_time": 1.0
+    },
+    "system_config": {
+      "dt": 0.01,
+      "input_channel": 0,
+      "max_ctrl": 0.5,
+      "max_time": 1.0,
+      "min_ctrl": -0.5,
+      "num_inputs": 1,
+      "num_states": 2,
+      "output_channel": 0,
+      "target": 0.0,
+      "trim_ics": [
+        1.0,
+        0.0
+      ],
+      "trim_values": [
+        0.0
+      ]
+    },
+    "weights": {
+      "control_effort": 0.1,
+      "mse": 1.0,
+      "overshoot": 0.5,
+      "settling_time": 0.5
+    }
+  },
+  "outputs": {
+    "achieved_metrics": {
+      "control_effort": 0.7496877863812291,
+      "control_zero_crossings": 1,
+      "mse": 0.44801255208463203,
+      "overshoot": 0.0,
+      "rise_time": 0.0,
+      "settling_time": 0.99,
+      "steady_state_error": 0.24491435365673236
+    },
+    "baseline_cost": 13.447128905504933,
+    "controller_parameters": {
+      "Kd": 9.699399423098324,
+      "Ki": 0.29983722471931534,
+      "Kp": 20.59318761404752
+    },
+    "ga_cost": 0.7469684245303039,
+    "num_evaluations": 16,
+    "progress": {
+      "Kd": [
+        9.699399423098324,
+        9.699399423098324
+      ],
+      "Ki": [
+        0.29983722471931534,
+        0.29983722471931534
+      ],
+      "Kp": [
+        20.59318761404752,
+        20.59318761404752
+      ],
+      "best_baseline_cost": [
+        13.447128905504933,
+        13.447128905504933
+      ],
+      "best_baseline_so_far": [
+        13.447128905504933,
+        13.447128905504933
+      ],
+      "best_cost": [
+        0.7469684245303039,
+        0.7469684245303039
+      ],
+      "best_ga_cost": [
+        0.7469684245303039,
+        0.7469684245303039
+      ],
+      "best_params": [
+        [
+          20.59318761404752,
+          0.29983722471931534,
+          9.699399423098324
+        ],
+        [
+          20.59318761404752,
+          0.29983722471931534,
+          9.699399423098324
+        ]
+      ],
+      "best_score_so_far": [
+        50,
+        50
+      ],
+      "control_effort": [
+        0.7496877863812291,
+        0.7496877863812291
+      ],
+      "cumulative_nfe": [
+        9,
+        13
+      ],
+      "iteration": [
+        1,
+        2
+      ],
+      "mean_baseline_cost": [
+        29.157539872516157,
+        17.292210845447414
+      ],
+      "mean_cost": [
+        315.4770620263595,
+        28.366480312830344
+      ],
+      "mean_ga_cost": [
+        315.4770620263595,
+        28.366480312830344
+      ],
+      "metrics_success": [
+        true,
+        true
+      ],
+      "mse": [
+        0.44801255208463203,
+        0.44801255208463203
+      ],
+      "overshoot": [
+        0.0,
+        0.0
+      ],
+      "settling_time": [
+        0.99,
+        0.99
+      ],
+      "success_score": [
+        50,
+        50
+      ],
+      "warnings": [
+        [],
+        []
+      ]
+    },
+    "stop_reason": "normal",
+    "success": true,
+    "target_hit_generation": null,
+    "target_hit_nfe": null,
+    "warnings": []
+  }
+}

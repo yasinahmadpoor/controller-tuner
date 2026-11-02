@@ -1,0 +1,97 @@
+{
+  "description": "Manual engine BallBeam PID deterministic baseline",
+  "inputs": {
+    "case_study": "tunerPID/case_studies/BallBeam.py",
+    "controller_type": "PID",
+    "fixed_initial_state": [
+      1.0,
+      0.0
+    ],
+    "num_inputs": 1,
+    "params": {
+      "Kd": 2.0,
+      "Ki": 0.5,
+      "Kp": 15.0
+    },
+    "simulation": {
+      "dt": 0.01,
+      "input_channel": 0,
+      "max_control": 0.5,
+      "max_time": 1.0,
+      "min_control": -0.5,
+      "output_channel": 0,
+      "target": 0.0,
+      "trim_values": [
+        0.0
+      ]
+    }
+  },
+  "outputs": {
+    "control_signals": {
+      "first": [
+        -0.5,
+        -0.5,
+        -0.5,
+        -0.5,
+        -0.5
+      ],
+      "last": [
+        0.5,
+        0.5,
+        0.5,
+        0.5,
+        0.5
+      ],
+      "length": 101,
+      "sha256": "c7f292335f9fe992804d66cc2821d1cf9ad6f1397439e7225cc185d5dae2def2"
+    },
+    "metrics": {
+      "control_effort": 0.9877870275487266,
+      "mse": 0.42509222491165505,
+      "overshoot": 30.170589984632972,
+      "rise_time": 0.77,
+      "rmse": 0.6519909699617434,
+      "settling_time": Infinity,
+      "ss_error": 0.24550074189254958,
+      "stable": false,
+      "zero_crossings": 1
+    },
+    "num_points": 101,
+    "time_points": {
+      "first": [
+        0.0,
+        0.01,
+        0.02,
+        0.03,
+        0.04
+      ],
+      "last": [
+        0.96,
+        0.97,
+        0.98,
+        0.99,
+        1.0
+      ],
+      "length": 101,
+      "sha256": "2d97dd2c2d94ed0b5ce6c902c0dcf2a41753796593ae2859ab77b0ba0c647bc3"
+    },
+    "trajectory": {
+      "first": [
+        1.0,
+        1.0,
+        0.999664402122977,
+        0.9989932063689312,
+        0.9979864127378624
+      ],
+      "last": [
+        -0.2533118828690767,
+        -0.26591378392892434,
+        -0.2781800871117491,
+        -0.2901107924175509,
+        -0.30170589984632973
+      ],
+      "length": 101,
+      "sha256": "275a5db9a071d78c21b4b318f48f6f0f68137be2e24e4b5dd4458ffe371bc271"
+    }
+  }
+}
