@@ -1,0 +1,6 @@
+[submodule "gaTunerPID"]
+	path = gaTunerPID
+	url = https://github.com/mnarimani/gaTunerPID.git
+[submodule "tunerPID"]
+	path = tunerPID
+	url = https://github.com/mnarimani/tunerPID.git
