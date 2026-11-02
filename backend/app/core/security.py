@@ -35,6 +35,7 @@ _DANGEROUS_CALLS = frozenset(
         "vars",
         "delattr",
         "setattr",
+        "getattr",
     }
 )
 
@@ -71,6 +72,7 @@ def validate_python_source(
     _check_imports(tree)
     _check_calls(tree)
     _check_loops(tree)
+    _check_module_scope_loops(tree)
     _check_dynamics_function(tree)
 
 
@@ -88,7 +90,9 @@ def _check_imports(tree: ast.AST) -> None:
             case ast.Import():
                 for alias in node.names:
                     _allow_root(alias.name)
-            case ast.ImportFrom(level=0 | None):
+            case ast.ImportFrom():
+                if node.level:
+                    raise UnsafeImport("relative imports are not allowed")
                 if node.module:
                     _allow_root(node.module)
 
@@ -117,6 +121,12 @@ def _check_loops(tree: ast.AST) -> None:
     for node in ast.walk(tree):
         if isinstance(node, ast.While) and _is_constant_true(node.test):
             raise UnsafeImport("'while True' loops are not allowed")
+
+
+def _check_module_scope_loops(tree: ast.AST) -> None:
+    for node in tree.body:
+        if isinstance(node, ast.For | ast.AsyncFor | ast.While):
+            raise UnsafeImport("loops at module import scope are not allowed")
 
 
 def _is_constant_true(test: ast.expr) -> bool:

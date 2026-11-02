@@ -60,6 +60,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     except Exception as exc:
         context.engines_loaded = False
         logger.error("engine_load_failed", error=str(exc))
+        if context.settings.app_env == "production":
+            raise RuntimeError("engine sources failed to load") from exc
 
     if context.cleanup_service is not None:
         try:
@@ -141,7 +143,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    add_request_id_middleware(app)
+    add_request_id_middleware(app, max_request_bytes=settings.max_request_bytes)
     register_error_handlers(app)
     app.include_router(health_router.router, prefix="/api/v1")
     app.include_router(systems_router.router, prefix="/api/v1")

@@ -65,9 +65,11 @@ allows the `http://localhost:5173` origin.
 Backend (uses Dockerized test Postgres and Redis):
 
 ```bash
+python scripts/verify_engines.py
 cd backend
-python -m pytest -q
+python -m pytest -q --cov=app --cov-fail-under=80
 ruff check app tests alembic
+ruff format --check app tests alembic
 ```
 
 Frontend:
@@ -75,9 +77,14 @@ Frontend:
 ```bash
 cd frontend
 npm ci
+npx tsc --noEmit
 npm test
 npm run build
 ```
+
+CI (`.github/workflows/ci.yml`) checks out the pinned engine repositories, verifies
+their hashes, runs migrations, enforces 80% backend coverage, tests/builds the frontend,
+and starts Compose for the smoke test.
 
 ## Configuration
 
@@ -112,6 +119,14 @@ settings:
 
 Engine sources are vendored into the images at `/app/engines/gaTunerPID` and
 `/app/engines/tunerPID`. Set `GA_ENGINE_REPO`/`MANUAL_ENGINE_REPO` to override them.
+
+## Documentation
+
+- [API examples](docs/API_EXAMPLES.md)
+- [Operations guide](docs/OPERATIONS.md)
+- [Adding case studies and upgrading engines](docs/UPGRADING_ENGINES.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Implementation phases](docs/IMPLEMENTATION_PHASES.md)
 
 ## Known limitations
 

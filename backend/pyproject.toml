@@ -15,16 +15,18 @@ dependencies = [
     "sqlalchemy==2.1.6",
     "alembic==1.20.1",
     "psycopg[binary]==3.3.6",
-    "redis==6.4.0",
+    "redis==8.1.0",
     "celery==5.5.3",
     "pydantic==2.14.2",
     "pydantic-settings==2.16.2",
-    "python-multipart==0.0.20",
+    "python-multipart==0.0.33",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest==9.2.0",
+    "pytest-cov==7.0.0",
+    "coverage[toml]==7.11.0",
     "ruff==0.17.3",
     "httpx==0.28.1",
 ]
@@ -36,3 +38,13 @@ include = ["app*"]
 testpaths = ["tests"]
 pythonpath = ["."]
 addopts = "-ra"
+
+[tool.coverage.run]
+source = ["app"]
+branch = false
+omit = ["app/infrastructure/storage/s3.py"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true

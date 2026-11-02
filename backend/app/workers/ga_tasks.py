@@ -9,6 +9,7 @@ from typing import Any
 
 from app.api.schemas import OptimizeRequest
 from app.core.cancellation import JobCancelled
+from app.core.logging import get_logger
 from app.db.unit_of_work import UnitOfWork
 from app.engines.auto_tune_adapter import AutoTuneEngineAdapter
 from app.infrastructure.locks import release_system_lock
@@ -21,9 +22,12 @@ from app.services.simulation_service import _MaterializedCode
 from app.workers.celery_app import celery_app
 from app.workers.runtime import build_worker_runtime
 
+logger = get_logger(__name__)
+
 
 @celery_app.task(bind=True, acks_late=True, name="app.workers.ga_tasks.run_optimization")
 def run_optimization(self, job_id: str) -> str:
+    logger.info("ga_job_started", job_id=job_id)
     runtime = build_worker_runtime()
     redis = runtime.redis.sync()
     job_uuid = uuid.UUID(job_id)
@@ -53,9 +57,7 @@ def run_optimization(self, job_id: str) -> str:
                 else:
                     system_id = run.system_id
                     request_payload = dict(run.request or {})
-                    uow.jobs.mark_running(
-                        job, worker_id=getattr(self.request, "hostname", None)
-                    )
+                    uow.jobs.mark_running(job, worker_id=getattr(self.request, "hostname", None))
                     uow.commit()
         if already_terminal or system_id is None or request_payload is None:
             return "skipped"
@@ -86,9 +88,11 @@ def run_optimization(self, job_id: str) -> str:
                     cancel_check=cancel_check,
                 )
         except JobCancelled:
+            logger.info("ga_job_cancelled", job_id=job_id)
             _finish_cancelled(runtime, redis, job_uuid, job_id)
             return "cancelled"
         except Exception as exc:
+            logger.exception("ga_job_failed", job_id=job_id, error=str(exc))
             _finish_failed(runtime, redis, job_uuid, job_id, exc)
             return "failed"
 
@@ -104,9 +108,7 @@ def run_optimization(self, job_id: str) -> str:
                 return "stale"
             if cancel_check():
                 uow.jobs.mark_cancelled(job)
-                uow.optimization_runs.finish(
-                    run, status="cancelled", finished_at=finished_at
-                )
+                uow.optimization_runs.finish(run, status="cancelled", finished_at=finished_at)
                 terminal_status = "cancelled"
             else:
                 uow.optimization_runs.finish(
@@ -125,6 +127,12 @@ def run_optimization(self, job_id: str) -> str:
             terminal_status,
             ttl_seconds=runtime.settings.job_retention_seconds,
         )
+        logger.info(
+            "ga_job_finished",
+            job_id=job_id,
+            status=terminal_status,
+            duration_ms=duration_ms,
+        )
         return terminal_status
     finally:
         if lock_token is not None and system_id is not None:
@@ -142,9 +150,7 @@ def _finish_cancelled(runtime: Any, redis: Any, job_uuid: uuid.UUID, job_id: str
         run = uow.optimization_runs.get(job.run_id)
         uow.jobs.mark_cancelled(job)
         if run is not None:
-            uow.optimization_runs.finish(
-                run, status="cancelled", finished_at=datetime.now(UTC)
-            )
+            uow.optimization_runs.finish(run, status="cancelled", finished_at=datetime.now(UTC))
         uow.commit()
     publish_terminal(
         redis,

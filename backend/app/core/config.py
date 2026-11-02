@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
     max_upload_bytes: int = 262_144
+    max_request_bytes: int = 1_048_576
     system_ttl_seconds: int = 86_400
     job_retention_seconds: int = 3_600
     run_retention_days: int = 30

@@ -6,10 +6,38 @@ import uuid
 import structlog
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
 REQUEST_ID_HEADER = "X-Request-ID"
+
+
+class BodySizeLimitMiddleware(BaseHTTPMiddleware):
+    """Reject oversized request bodies before they reach route handlers."""
+
+    def __init__(self, app: ASGIApp, max_bytes: int):
+        super().__init__(app)
+        self.max_bytes = max_bytes
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        content_length = request.headers.get("content-length")
+        if content_length is not None:
+            try:
+                size = int(content_length)
+            except ValueError:
+                size = None
+            if size is not None and size > self.max_bytes:
+                return JSONResponse(
+                    status_code=413,
+                    content={
+                        "error": {
+                            "code": "payload_too_large",
+                            "message": "Request body exceeds the maximum allowed size.",
+                            "context": {"max_bytes": self.max_bytes, "actual_bytes": size},
+                        }
+                    },
+                )
+        return await call_next(request)
 
 
 class RequestIdMiddleware(BaseHTTPMiddleware):
@@ -38,5 +66,6 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def add_middleware(app: ASGIApp) -> None:
+def add_middleware(app: ASGIApp, *, max_request_bytes: int = 1_048_576) -> None:
+    app.add_middleware(BodySizeLimitMiddleware, max_bytes=max_request_bytes)
     app.add_middleware(RequestIdMiddleware)

@@ -55,6 +55,10 @@ def docker_dependency_stack() -> Iterator[None]:
     """Start test Postgres + Redis containers via docker compose, then tear down."""
     import subprocess
 
+    if os.environ.get("TEST_SKIP_DOCKER_FIXTURES") == "1":
+        yield
+        return
+
     compose_file = Path(__file__).resolve().parents[2] / "docker" / "docker-compose.test.yml"
     subprocess.run(
         ["docker", "compose", "-f", str(compose_file), "up", "-d", "--wait"],

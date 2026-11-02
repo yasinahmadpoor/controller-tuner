@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from app.core.logging import get_logger
 from app.db.unit_of_work import UnitOfWork
 from app.infrastructure.progress import clear_job_keys
 from app.workers.celery_app import celery_app
 from app.workers.runtime import build_worker_runtime
+
+logger = get_logger(__name__)
 
 
 @celery_app.task(name="app.workers.maintenance.cleanup_terminal_jobs")
@@ -23,6 +26,7 @@ def cleanup_terminal_jobs() -> int:
                 clear_job_keys(redis, str(job.id))
                 uow.jobs.delete(job.id)
             uow.commit()
+        logger.info("cleanup_terminal_jobs", removed=len(expired))
         return len(expired)
     finally:
         runtime.close()
@@ -43,6 +47,11 @@ def cleanup_expired_runs() -> int:
             for run in expired_simulations:
                 uow.simulation_runs.delete(run.id)
             uow.commit()
+        logger.info(
+            "cleanup_expired_runs",
+            optimizations=len(expired_optimizations),
+            simulations=len(expired_simulations),
+        )
         return len(expired_optimizations) + len(expired_simulations)
     finally:
         runtime.close()
@@ -59,6 +68,7 @@ def cleanup_orphan_artifacts() -> int:
             uow.commit()
         for key in keys:
             runtime.storage.delete(key)
+        logger.info("cleanup_orphan_artifacts", removed=len(keys))
         return len(keys)
     finally:
         runtime.close()
@@ -68,6 +78,8 @@ def cleanup_orphan_artifacts() -> int:
 def delete_expired_systems() -> int:
     runtime = build_worker_runtime()
     try:
-        return runtime.system_service.delete_expired(datetime.now(UTC))
+        removed = runtime.system_service.delete_expired(datetime.now(UTC))
+        logger.info("delete_expired_systems", removed=removed)
+        return removed
     finally:
         runtime.close()
