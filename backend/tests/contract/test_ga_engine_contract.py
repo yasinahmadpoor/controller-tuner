@@ -46,3 +46,19 @@ def test_ballbeam_ga_matches_seeded_golden_baseline():
     actual = build_ga_golden()["outputs"]
 
     _assert_nested_close(actual, expected)
+
+
+def test_ga_optimizer_exposes_documented_optimize_pid_parameter_order():
+    import inspect
+
+    from app.engines.loader import ga, load_engines
+
+    load_engines()
+    signature = inspect.signature(ga()["GAOptimizer"].optimize_pid)
+
+    assert list(signature.parameters) == [
+        "self",
+        "weights",
+        "param_ranges",
+        "fixed_targets",
+    ]

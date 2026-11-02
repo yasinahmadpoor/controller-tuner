@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.repositories import (
     ArtifactRepository,
+    OptimizationRunRepository,
     SimulationRunRepository,
     SystemRepository,
 )
@@ -33,8 +34,10 @@ class UnitOfWork:
         self.systems: SystemRepository | None = None
         self.artifacts: ArtifactRepository | None = None
         self.simulation_runs: SimulationRunRepository | None = None
-        # Convenience alias used by some services/tests.
+        self.optimization_runs: OptimizationRunRepository | None = None
+        # Convenience aliases used by some services/tests.
         self.simulations: SimulationRunRepository | None = None
+        self.optimizations: OptimizationRunRepository | None = None
 
     def __enter__(self) -> UnitOfWork:
         self.session = self._session_factory()
@@ -45,7 +48,9 @@ class UnitOfWork:
         self.systems = SystemRepository(session)
         self.artifacts = ArtifactRepository(session)
         self.simulation_runs = SimulationRunRepository(session)
+        self.optimization_runs = OptimizationRunRepository(session)
         self.simulations = self.simulation_runs
+        self.optimizations = self.optimization_runs
 
     def commit(self) -> None:
         if self.session is not None:

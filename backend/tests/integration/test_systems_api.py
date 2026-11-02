@@ -31,7 +31,9 @@ def _truncate_tables(database_url: str) -> None:
     engine = create_engine(database_url)
     with engine.begin() as conn:
         conn.execute(
-            text("TRUNCATE TABLE simulation_runs, systems, artifacts RESTART IDENTITY CASCADE")
+            text(
+                "TRUNCATE TABLE optimization_runs, simulation_runs, systems, artifacts RESTART IDENTITY CASCADE"
+            )
         )
     engine.dispose()
 

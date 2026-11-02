@@ -204,7 +204,7 @@ class GAConfig(BaseModel):
     population_size: int = Field(default=20, ge=5, le=200)
     generations: int = Field(default=30, ge=1, le=500)
     seed: int | None = None
-    max_wall_clock: float = Field(default=120.0, gt=0)
+    max_wall_clock: float = Field(default=120.0, ge=1, le=600)
 
     @model_validator(mode="after")
     def _validate_ranges(self) -> GAConfig:
@@ -262,9 +262,55 @@ class OptimizeResult(BaseModel):
     progress: dict[str, Any]
     stop_reason: Literal["normal", "score_100", "wall_clock"]
     num_evaluations: int
-    target_hit: TargetHit
+    target_hit: TargetHit = Field(default_factory=TargetHit)
     warnings: list[str] = Field(default_factory=list)
     non_finite_metrics: list[str] = Field(default_factory=list)
+
+
+class OptimizationRunSummary(BaseModel):
+    run_id: UUID
+    system_id: UUID
+    run_type: RunType = RunType.OPTIMIZATION
+    engine: Engine
+    status: str
+    stop_reason: str | None = None
+    duration_ms: int | None = None
+    created_at: datetime
+    summary: dict[str, Any] = Field(default_factory=dict)
+
+
+class OptimizationRunListResponse(BaseModel):
+    items: list[OptimizationRunSummary]
+    total: int
+    limit: int
+    offset: int
+
+
+class OptimizationRunDetail(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    run_id: UUID
+    system_id: UUID
+    run_type: RunType = RunType.OPTIMIZATION
+    engine: Engine
+    status: str
+    request: dict[str, Any] = Field(default_factory=dict)
+    controller_parameters: dict[str, float] = Field(default_factory=dict)
+    best_params: dict[str, float] = Field(default_factory=dict)
+    achieved_metrics: dict[str, Any] = Field(default_factory=dict)
+    progress: dict[str, Any] = Field(default_factory=dict)
+    stop_reason: str | None = None
+    num_evaluations: int | None = None
+    target_hit: dict[str, Any] | None = None
+    warnings: list[str] = Field(default_factory=list)
+    non_finite_metrics: list[str] = Field(default_factory=list)
+    ga_cost: float | None = None
+    baseline_cost: float | None = None
+    error: dict[str, Any] | None = None
+    duration_ms: int | None = None
+    created_at: datetime
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
 
 
 class JobLink(BaseModel):

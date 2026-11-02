@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.error_handlers import register_error_handlers
 from app.api.middleware import add_middleware as add_request_id_middleware
 from app.api.v1 import health as health_router
+from app.api.v1 import optimizations as optimizations_router
 from app.api.v1 import simulations as simulations_router
 from app.api.v1 import systems as systems_router
 from app.context import AppContext
@@ -23,6 +24,7 @@ from app.infrastructure.storage import create_storage
 from app.infrastructure.storage.base import ArtifactStorage
 from app.services.catalog_service import CatalogService
 from app.services.cleanup_service import CleanupService
+from app.services.optimization_service import OptimizationService
 from app.services.simulation_service import SimulationService
 from app.services.system_service import SystemService
 
@@ -98,6 +100,11 @@ def build_context(settings: Settings) -> AppContext:
         persist_trajectories=settings.persist_trajectories,
         run_retention_days=settings.run_retention_days,
     )
+    context.optimization_service = OptimizationService(
+        session_factory=session_factory,
+        system_service=context.system_service,
+        run_retention_days=settings.run_retention_days,
+    )
     context.cleanup_service = CleanupService(system_service=context.system_service)
     return context
 
@@ -125,6 +132,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router.router, prefix="/api/v1")
     app.include_router(systems_router.router, prefix="/api/v1")
     app.include_router(simulations_router.router, prefix="/api/v1")
+    app.include_router(optimizations_router.router, prefix="/api/v1")
 
     @app.get("/api/v1/capabilities", tags=["meta"])
     def capabilities() -> dict[str, list[str]]:

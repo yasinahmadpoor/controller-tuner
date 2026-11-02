@@ -8,6 +8,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.db.models.artifact import ArtifactModel
+from app.db.models.optimization_run import OptimizationRunModel
 from app.db.models.simulation_run import SimulationRunModel
 from app.db.models.system import SystemModel
 
@@ -221,4 +222,90 @@ class SimulationRunRepository(BaseRepository):
 
     def delete_expired(self, now: datetime) -> list[SimulationRunModel]:
         stmt = select(SimulationRunModel).where(SimulationRunModel.expires_at < now)
+        return list(self.session.scalars(stmt))
+
+
+class OptimizationRunRepository(BaseRepository):
+    """Persistence for GA optimization history (Phase 4)."""
+
+    def create(
+        self,
+        *,
+        system_id: UUID,
+        request: dict[str, Any] | None = None,
+        status: str = "succeeded",
+        best_params: dict[str, Any] | None = None,
+        achieved_metrics: dict[str, Any] | None = None,
+        progress: dict[str, Any] | None = None,
+        stop_reason: str | None = None,
+        num_evaluations: int | None = None,
+        target_hit: dict[str, Any] | None = None,
+        warnings: list[str] | None = None,
+        non_finite_metrics: list[str] | None = None,
+        ga_cost: float | None = None,
+        baseline_cost: float | None = None,
+        error: dict[str, Any] | None = None,
+        engine: str = "ga_tuner",
+        duration_ms: int | None = None,
+        started_at: datetime | None = None,
+        finished_at: datetime | None = None,
+        expires_at: datetime | None = None,
+    ) -> OptimizationRunModel:
+        run = OptimizationRunModel(
+            id=uuid4(),
+            system_id=system_id,
+            engine=engine,
+            status=status,
+            request=request or {},
+            best_params=best_params or {},
+            achieved_metrics=achieved_metrics or {},
+            progress=progress or {},
+            stop_reason=stop_reason,
+            num_evaluations=num_evaluations,
+            target_hit=target_hit,
+            warnings=warnings or [],
+            non_finite_metrics=non_finite_metrics or [],
+            ga_cost=ga_cost,
+            baseline_cost=baseline_cost,
+            error=error,
+            duration_ms=duration_ms,
+            created_at=datetime.now(UTC),
+            started_at=started_at,
+            finished_at=finished_at,
+            expires_at=expires_at,
+        )
+        self.session.add(run)
+        return run
+
+    def get(self, run_id: UUID) -> OptimizationRunModel | None:
+        return self.session.get(OptimizationRunModel, run_id)
+
+    def list(
+        self,
+        *,
+        system_id: UUID | None = None,
+        limit: int = 20,
+        offset: int = 0,
+        status: str | None = None,
+    ) -> tuple[list[OptimizationRunModel], int]:
+        stmt = select(OptimizationRunModel)
+        if system_id is not None:
+            stmt = stmt.where(OptimizationRunModel.system_id == system_id)
+        if status is not None:
+            stmt = stmt.where(OptimizationRunModel.status == status)
+        stmt = stmt.order_by(OptimizationRunModel.created_at.desc(), OptimizationRunModel.id)
+        total = self.session.scalar(
+            select(func.count()).select_from(stmt.order_by(None).subquery())
+        )
+        items = list(self.session.scalars(stmt.limit(limit).offset(offset)))
+        return items, int(total or 0)
+
+    def delete(self, run_id: UUID) -> bool:
+        count = self.session.execute(
+            delete(OptimizationRunModel).where(OptimizationRunModel.id == run_id)
+        ).rowcount
+        return bool(count)
+
+    def delete_expired(self, now: datetime) -> list[OptimizationRunModel]:
+        stmt = select(OptimizationRunModel).where(OptimizationRunModel.expires_at < now)
         return list(self.session.scalars(stmt))
