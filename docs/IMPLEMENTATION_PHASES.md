@@ -20,7 +20,7 @@ load BallBeam (JSON or .py)
   → manual simulate with PID gains (persisted run)
   → GA optimize with default ranges/targets (sync API; Celery/SSE in Track B)
   → inspect charts and metrics, reopen from history
-  → run with docker compose up --build
+  → run ./scripts/up.sh
 ```
 
 Estimated effort: **11–15 focused days** for a robust version, or **~3–4 days** if the scope is compressed to the assignment-level minimum with a single database and no Celery UI.
@@ -672,9 +672,11 @@ A phase is not complete until:
   - [ ] Ports `8000` and `3000`.
 - [ ] Write `docker-compose.dev.yml`:
   - [ ] Bind mounts for hot reload.
-  - [ ] Vite dev server on `5173`.
+  - [ ] Vite dev server on `5173` (host port configurable via `UI_PORT`).
   - [ ] CORS for the dev origin.
+  - [ ] Separate Compose project (`controller-tuner-dev`) so it can coexist with production.
   - [ ] Celery worker with `--reload` or manual restart instructions.
+- [ ] Add `scripts/up.sh` and `scripts/dev.sh` one-command startup helpers with port fallback.
 - [ ] Add `.dockerignore` files.
 - [ ] Write `scripts/e2e_smoke.py`:
   - [ ] Hit health and readiness (DB/Redis/migrations/artifacts).
@@ -696,7 +698,7 @@ A phase is not complete until:
 
 ### Acceptance criteria
 
-- `docker compose up --build` starts all services cleanly.
+- `./scripts/up.sh` starts all services cleanly, including submodule initialization and network recreation.
 - `migrate` exits 0 and the database has the expected tables.
 - Backend readiness passes only when Postgres, Redis, migrations, and artifact storage are healthy; frontend waits for it.
 - The UI loads at `http://localhost:3000`.
@@ -795,7 +797,7 @@ A phase is not complete until:
 | **M2 — Backend auto slice** | 4 | Create BallBeam → optimize GA via API; runs persist |
 | **M3 — UI manual slice** | 5 | Browser: load → manual simulate → charts → history |
 | **M4 — UI auto slice** | 6 | Browser: load → configure GA → results → history |
-| **M5 — Deployable** | 8 | `docker compose up --build` works end to end with DB/Redis |
+| **M5 — Deployable** | 8 | `./scripts/up.sh` works end to end with DB/Redis |
 | **M6 — Production-ready** | 7, 9 | Celery progress/SSE, CI, hardening, docs |
 
 Recommended review gates: **M1**, **M4**, **M5**. Do not start Phase 8 before M4 unless deployment feedback is needed early.
@@ -834,7 +836,7 @@ This is a suggested cadence, not a hard requirement.
 
 - Days 1–2: Phase 8 (full Compose stack).
 - Days 3–5: Phase 9, CI, docs, and buffer.
-- End-of-week demo: `docker compose up --build` with Postgres/Redis/worker/beat plus CI green.
+- End-of-week demo: `./scripts/up.sh` with Postgres/Redis/worker/beat plus CI green.
 
 ---
 
@@ -868,7 +870,7 @@ Use this script for milestone reviews and the final handoff.
 1. From a clean checkout:
 
    ```bash
-   docker compose up --build
+   ./scripts/up.sh
    ```
 
 2. Wait for the `migrate` service to exit 0 and for backend/worker/frontend health checks to pass.

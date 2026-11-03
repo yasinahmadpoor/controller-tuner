@@ -1,6 +1,11 @@
 # API examples
 
 Base URL: `http://localhost:8000/api/v1` (direct) or `/api/v1` through nginx.
+Start the stack as described in the [README quick start](../README.md#quick-start-production-like-compose).
+
+If host port `8000` is already in use, `./scripts/up.sh` selects a free port
+automatically. You can also choose one explicitly, for example
+`API_PORT=8010 ./scripts/up.sh`, then use `http://localhost:8010/api/v1`.
 
 ```bash
 API=http://localhost:8000/api/v1

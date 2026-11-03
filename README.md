@@ -9,8 +9,8 @@ engines.
 The read-only engine repositories are pinned git submodules:
 
 ```bash
-git clone --recurse-submodules git@github.com:yasinahmadpoor/task.git
-cd task
+git clone --recurse-submodules git@github.com:yasinahmadpoor/controller-tuner.git
+cd controller-tuner
 ```
 
 For an existing clone:
@@ -26,16 +26,35 @@ A clone without submodules cannot build or run: the Docker images copy
 
 Requirements: Docker Engine with Compose v2.
 
+From the repository root, run:
+
 ```bash
-export POSTGRES_PASSWORD=tuner   # optional for local use; default is "tuner"
-docker compose up --build
+./scripts/up.sh
 ```
 
-Open:
+The script initializes the pinned engine submodules, refreshes the Node base image if
+needed, recreates the stack cleanly, and waits for health checks. It also picks free
+host ports automatically when `8000` or `3000` are already in use.
+
+Open (defaults):
 
 - UI: http://localhost:3000
 - API: http://localhost:8000/api/v1
 - API docs: http://localhost:8000/docs
+
+Use specific host ports or a database password when needed:
+
+```bash
+API_PORT=8010 UI_PORT=3010 POSTGRES_PASSWORD=secret ./scripts/up.sh
+```
+
+Manual equivalent:
+
+```bash
+git submodule update --init --recursive
+docker compose down --remove-orphans
+docker compose up --build --wait
+```
 
 Compose starts PostgreSQL, Redis, a one-shot migration job, the backend, a Celery
 worker, Celery beat, and the nginx-served frontend. The backend becomes healthy only
@@ -66,17 +85,42 @@ docker compose down -v   # also removes Postgres/Redis/artifact volumes
 ## Development Compose
 
 The dev override mounts the backend and engine sources for hot reload, runs Vite on
-port `5173`, and keeps the same Postgres/Redis/migrate/worker/beat services.
+port `5173`, and keeps the same Postgres/Redis/migrate/worker/beat services. It uses a
+separate Compose project (`controller-tuner-dev`), so it can run alongside the
+production-like stack.
+
+From the repository root, run:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+./scripts/dev.sh
 ```
 
 - UI: http://localhost:5173
-- API: http://localhost:8000/api/v1
+- API: http://localhost:8000/api/v1 (or an automatically selected free port)
 
-The Vite dev server uses `VITE_API_URL=http://localhost:8000/api/v1` and the backend
-allows the `http://localhost:5173` origin.
+Use specific ports when needed:
+
+```bash
+API_PORT=8010 UI_PORT=5183 ./scripts/dev.sh
+```
+
+The Vite dev server uses `VITE_API_URL=http://localhost:${API_PORT}/api/v1` and the
+backend allows the matching `http://localhost:${UI_PORT}` origin.
+
+Manual equivalent:
+
+```bash
+docker compose -p controller-tuner-dev -f docker-compose.yml -f docker-compose.dev.yml \
+  down --remove-orphans
+docker compose -p controller-tuner-dev -f docker-compose.yml -f docker-compose.dev.yml \
+  up --build --wait
+```
+
+Stop the dev stack:
+
+```bash
+docker compose -p controller-tuner-dev -f docker-compose.yml -f docker-compose.dev.yml down
+```
 
 ## Local tests
 

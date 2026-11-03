@@ -1,3 +1,5 @@
+name: controller-tuner-dev
+
 services:
   backend:
     command:
@@ -10,7 +12,7 @@ services:
       - --reload
     environment:
       APP_ENV: development
-      CORS_ORIGINS: http://localhost:5173
+      CORS_ORIGINS: http://localhost:${UI_PORT:-5173}
       GA_ENGINE_REPO: /engines/gaTunerPID
       MANUAL_ENGINE_REPO: /engines/tunerPID
     volumes:
@@ -46,16 +48,17 @@ services:
       - artifacts_data:/data/artifacts
 
   frontend:
+    build: !reset null
     image: node:20-alpine
     working_dir: /app
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
     environment:
-      VITE_API_URL: http://localhost:8000/api/v1
+      VITE_API_URL: http://localhost:${API_PORT:-8000}/api/v1
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
-    ports:
-      - "5173:5173"
+    ports: !override
+      - "${UI_PORT:-5173}:5173"
     depends_on:
       backend:
         condition: service_healthy

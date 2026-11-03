@@ -17,7 +17,7 @@
 3. Provide one coherent REST API and one React UI that work with both workflows.
 4. Persist systems, uploaded code, simulation runs, optimization runs, jobs, and progress so results survive restarts and can be revisited.
 5. Run long GA optimizations in Celery workers with Redis-backed progress and SSE streaming.
-6. Start everything with `docker compose up --build`.
+6. Start everything with `./scripts/up.sh` (initializes submodules, recreates the stack, and waits for health checks).
 7. Cover the critical paths with unit, integration, and contract tests.
 
 ### Non-goals (for the first release)
@@ -1814,15 +1814,17 @@ server {
 
 ### 9.5 Development stack
 
+Start the development stack with `./scripts/dev.sh`. It uses the separate Compose project `controller-tuner-dev`, so it can run alongside the production-like stack.
+
 `docker-compose.dev.yml`:
 
-- Postgres and Redis services with exposed ports (`5432`, `6379`) for local tools.
+- Postgres and Redis are internal to the dev Compose network (use `docker compose exec` for local tools).
 - `migrate` runs `alembic upgrade head` on startup; for rapid iteration, run `alembic revision --autogenerate` locally.
-- Backend: bind-mount `backend/app`, `engines/gaTunerPID`, and `engines/tunerPID`; run `uvicorn --reload`.
-- Worker: bind-mount the same paths; run Celery with `--pool=solo` or concurrency 1 for easier debugging.
-- Frontend: bind-mount `frontend/`; run `npm run dev -- --host 0.0.0.0`; expose `5173`.
-- `VITE_API_URL=http://localhost:8000/api/v1`.
-- CORS enabled for `http://localhost:5173`.
+- Backend: bind-mount `backend`, `engines/gaTunerPID`, and `engines/tunerPID`; run `uvicorn --reload`.
+- Worker: bind-mount the same paths; run Celery with concurrency 1 for easier debugging.
+- Frontend: bind-mount `frontend/`; run Vite on container port `5173`; expose it as `UI_PORT` (default `5173`).
+- `VITE_API_URL=http://localhost:${API_PORT}/api/v1` (default `API_PORT=8000`, auto-selected when busy).
+- CORS enabled for `http://localhost:${UI_PORT}`.
 
 Production and development share the same engine paths, env variable names, and migration flow.
 
@@ -1851,7 +1853,7 @@ Production and development share the same engine paths, env variable names, and 
 | Migration | Alembic schema and upgrade path | pytest + testcontainers | `alembic upgrade head` from empty DB; downgrade/upgrade smoke |
 | Frontend unit | Components and hooks | Vitest + RTL + MSW | GainSchema renders sliders, error banner on 500, loading states |
 | E2E | Full happy path | Playwright (optional) or API smoke script | Load BallBeam → simulate → optimize → export → reopen from history |
-| Docker smoke | Build and run full stack | shell/CI | `docker compose up --build -d`, wait for health, run `scripts/e2e_smoke.py` |
+| Docker smoke | Build and run full stack | shell/CI | `./scripts/up.sh`, then run `scripts/e2e_smoke.py` |
 
 ### 10.2 Engine contract tests
 
