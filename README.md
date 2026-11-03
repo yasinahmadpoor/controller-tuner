@@ -63,7 +63,7 @@ after migrations complete and readiness checks pass.
 Run the smoke test from the host:
 
 ```bash
-python scripts/e2e_smoke.py
+python3 scripts/e2e_smoke.py
 ```
 
 The Compose database is not published to the host by default. To also assert job/run
@@ -124,12 +124,15 @@ docker compose -p controller-tuner-dev -f docker-compose.yml -f docker-compose.d
 
 ## Local tests
 
-Backend (uses Dockerized test Postgres and Redis):
+Backend (pytest starts Dockerized test Postgres and Redis automatically unless
+`TEST_SKIP_DOCKER_FIXTURES=1`). Install the runtime and `dev` dependencies first:
 
 ```bash
-python scripts/verify_engines.py
+python3 -m pip install -r backend/requirements.txt
+python3 -m pip install -e "./backend[dev]"
+python3 scripts/verify_engines.py
 cd backend
-python -m pytest -q --cov=app --cov-fail-under=80
+python3 -m pytest -q --cov=app --cov-fail-under=80
 ruff check app tests alembic
 ruff format --check app tests alembic
 ```
@@ -155,14 +158,23 @@ settings:
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `API_PORT` | `8000` | Host port for the API (Compose host mapping) |
+| `UI_PORT` | `3000` | Host port for the production frontend |
 | `POSTGRES_PASSWORD` | `tuner` | Compose Postgres password |
+| `APP_ENV` | `production` in Compose | Runtime environment (`development`, `test`, `production`) |
+| `LOG_LEVEL` | `INFO` | Structured log level |
 | `DATABASE_URL` | Compose-managed | PostgreSQL DSN (`postgresql+psycopg://...`) |
+| `DB_POOL_SIZE` / `DB_MAX_OVERFLOW` | `5` / `10` | SQLAlchemy connection pool sizing |
 | `REDIS_URL` | `redis://redis:6379/0` | Redis state, locks, progress streams |
 | `CELERY_BROKER_URL` | `redis://redis:6379/0` | Celery broker |
 | `CELERY_RESULT_BACKEND` | `redis://redis:6379/1` | Celery result backend |
+| `CORS_ORIGINS` | empty in Compose | Comma-separated browser origins; dev stack sets the Vite origin |
 | `ARTIFACT_DIR` | `/data/artifacts` | Shared artifact volume |
+| `ARTIFACT_BACKEND` | `local` | Artifact storage backend (`local`; `s3` is a stub) |
 | `PERSIST_TRAJECTORIES` | `true` in Compose | Store simulation chart data |
 | `MAX_UPLOAD_BYTES` | `262144` | Python upload limit |
+| `MAX_REQUEST_BYTES` | `1048576` | Whole-request body limit |
+| `UVICORN_WORKERS` | `1` | API worker setting (the current container command runs one Uvicorn process) |
 | `SYSTEM_TTL_SECONDS` | `86400` | Uploaded-system retention |
 | `JOB_RETENTION_SECONDS` | `3600` | Async job retention |
 | `RUN_RETENTION_DAYS` | `30` | Run history retention |
@@ -182,7 +194,7 @@ settings:
 Engine sources come from pinned git submodules and are copied into the images at
 `/app/engines/gaTunerPID` and `/app/engines/tunerPID`. Set
 `GA_ENGINE_REPO`/`MANUAL_ENGINE_REPO` to override them. Run
-`python scripts/verify_engines.py` to confirm the checked-out submodules match the
+`python3 scripts/verify_engines.py` to confirm the checked-out submodules match the
 recorded hashes.
 
 ## Documentation

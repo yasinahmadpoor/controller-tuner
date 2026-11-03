@@ -2,8 +2,8 @@
 """End-to-end smoke test for a running Compose stack.
 
 Usage:
-    python scripts/e2e_smoke.py
-    API_URL=http://localhost:8000/api/v1 python scripts/e2e_smoke.py
+    python3 scripts/e2e_smoke.py
+    API_URL=http://localhost:8000/api/v1 python3 scripts/e2e_smoke.py
 
 The script uses only the standard library so it can run on the host or inside
 any container. Optional ``DATABASE_URL``/``ARTIFACT_DIR`` environment variables

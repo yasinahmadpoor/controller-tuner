@@ -191,10 +191,10 @@ The backend and worker are the only components that import engine code. The fron
 
 ## 5. Proposed monorepo layout
 
-The two source repositories remain untouched. The umbrella project adds new directories beside them.
+The two source repositories remain untouched. The umbrella project adds new directories beside them. The tree below is the target layout; the current implementation keeps the same top-level structure but does not yet include every planned module.
 
 ```
-task/
+controller-tuner/
 ├── engines/gaTunerPID/                  # provided — read-only
 │   ├── src/
 │   ├── case_studies/json/
@@ -229,7 +229,7 @@ task/
 │   │   │   └── constants.py
 │   │   ├── domain/              # engine-agnostic canonical models
 │   │   │   ├── enums.py         # ControllerType, Engine, JobStatus
-│   │   │   ├── entities.py      # SystemSpec, RunSpec, results
+│   │   │   ├── models.py        # SystemSpec, RunSpec, results
 │   │   │   ├── engine_config.py # engine-specific config builders
 │   │   │   └── errors.py
 │   │   ├── db/
@@ -312,18 +312,15 @@ task/
 │   ├── scripts/
 │   │   ├── seed_catalog.py
 │   │   ├── verify_engines.py
-│   │   ├── wait_for_dependencies.py
 │   │   └── e2e_smoke.py
 │   ├── docker/
 │   │   ├── backend.Dockerfile
 │   │   ├── worker.Dockerfile
-│   │   ├── entrypoint-api.sh
-│   │   ├── entrypoint-worker.sh
+│   │   ├── docker-compose.test.yml
 │   │   └── entrypoint-migrate.sh
 │   ├── .env.example
 │   ├── pyproject.toml
 │   ├── requirements.txt
-│   ├── requirements-dev.txt
 │   ├── .pre-commit-config.yaml
 │   ├── README.md
 │   └── Makefile
@@ -376,7 +373,7 @@ task/
 |---|---|---|
 | API (`app/api`) | HTTP routing, request validation, status codes, response models | Contain engine calls, SQL queries, or business rules |
 | Application services (`app/services`) | Orchestration: load system, build engine configs, persist runs, enqueue jobs | Import ORM models or engine modules directly |
-| Repositories (`app/repositories`) | Persistence queries and transaction participation | Contain HTTP or engine logic |
+| Repositories (`app/db/repositories.py`) | Persistence queries and transaction participation | Contain HTTP or engine logic |
 | Engine adapters (`app/engines`) | Translate canonical models to engine calls and engine output to canonical results | Mutate engine source or duplicate physics/metrics |
 | Workers (`app/workers`) | Celery tasks that execute GA runs and cleanup, publish progress | Serve HTTP |
 | Infrastructure (`app/infrastructure`) | PostgreSQL sessions, Redis, locks, artifact storage, telemetry | Know about HTTP or domain rules |
@@ -475,7 +472,7 @@ This approach was verified against both repositories: the manual engine imports 
 All systems are normalized into one immutable description before either engine is called.
 
 ```python
-# backend/app/domain/entities.py (illustrative)
+# backend/app/domain/models.py (illustrative)
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
@@ -747,10 +744,12 @@ Conventions:
 |---|---|---|
 | `systems` | Canonical system registry | `id UUID PK`, `name`, `description`, `objective`, `source_type`, `source_ref`, `num_states`, `num_inputs`, `capabilities JSONB`, `simulation_defaults JSONB`, `optimization_defaults JSONB`, `artifact_id FK`, `code_sha256`, `code_size`, `created_at`, `updated_at`, `expires_at` |
 | `artifacts` | Code and optional large outputs | `id UUID PK`, `kind` (`code`, `trajectory`), `storage_backend`, `storage_key`, `sha256`, `size`, `content_type`, `created_at` |
-| `simulation_runs` | Manual simulation history | `id UUID PK`, `system_id FK`, `controller_type`, `params JSONB`, `overrides JSONB`, `seed`, `engine`, `status`, `metrics JSONB`, `non_finite_metrics JSONB`, `trajectory_artifact_id FK NULL`, `duration_ms`, `created_at` |
-| `optimization_runs` | GA run history | `id UUID PK`, `system_id FK`, `request JSONB`, `status`, `best_params JSONB`, `achieved_metrics JSONB`, `progress JSONB`, `stop_reason`, `num_evaluations`, `target_hit JSONB`, `warnings JSONB`, `error JSONB NULL`, `duration_ms`, `created_at`, `started_at`, `finished_at` |
-| `jobs` | Async job state | `id UUID PK`, `run_id FK UNIQUE`, `run_type` (`simulation`, `optimization`), `status`, `progress JSONB`, `cancel_requested BOOL`, `worker_id`, `error JSONB NULL`, `created_at`, `started_at`, `finished_at`, `expires_at` |
-| `job_events` | Optional SSE replay | `id BIGSERIAL PK`, `job_id FK`, `seq INT`, `event_type`, `payload JSONB`, `created_at` |
+| `simulation_runs` | Manual simulation history | `id UUID PK`, `system_id FK`, `controller_type`, `request JSONB`, `params JSONB`, `overrides JSONB`, `initial_state JSONB NULL`, `seed`, `engine`, `status`, `metrics JSONB`, `non_finite_metrics JSONB`, `warnings JSONB`, `error JSONB NULL`, `trajectory_artifact_id FK NULL`, `duration_ms`, `created_at`, `expires_at` |
+| `optimization_runs` | GA run history | `id UUID PK`, `system_id FK`, `engine`, `status`, `request JSONB`, `best_params JSONB`, `achieved_metrics JSONB`, `progress JSONB`, `stop_reason`, `num_evaluations`, `target_hit JSONB`, `warnings JSONB`, `non_finite_metrics JSONB`, `ga_cost`, `baseline_cost`, `error JSONB NULL`, `duration_ms`, `created_at`, `started_at`, `finished_at`, `expires_at` |
+| `jobs` | Async job state | `id UUID PK`, `run_id FK UNIQUE`, `run_type` (`simulation`, `optimization`), `status`, `progress JSONB`, `cancel_requested BOOL`, `worker_id`, `lock_token`, `error JSONB NULL`, `created_at`, `started_at`, `finished_at`, `expires_at` |
+
+There is no `job_events` table: SSE progress is replayed from the Redis Stream
+`job:{job_id}:events`, while PostgreSQL remains the source of truth for terminal state.
 
 Design notes:
 
@@ -763,7 +762,7 @@ Design notes:
 **Repository and Unit-of-Work pattern**
 
 ```python
-# backend/app/repositories/systems.py
+# backend/app/db/repositories.py
 class SystemRepository(BaseRepository[SystemModel]):
     def get(self, system_id: UUID) -> SystemModel | None: ...
     def list(self, *, limit: int, offset: int) -> list[SystemModel]: ...
@@ -845,8 +844,8 @@ systems row (artifact_id, code_sha256, metadata)
 
 **Migration workflow**
 
-- `alembic upgrade head` runs in the one-shot `migrate` service before API/worker start, or in the API entrypoint before Uvicorn.
-- The worker container waits for migrations via `scripts/wait_for_dependencies.py` (DB reachable + Alembic revision current).
+- `alembic upgrade head` runs in the one-shot `migrate` service before API/worker start.
+- `backend`, `worker`, and `beat` wait for the `migrate` service to complete successfully via Compose `depends_on`.
 - CI runs `alembic upgrade head` against a fresh Postgres container, then the full test suite.
 - Never use `Base.metadata.create_all()` in production.
 
@@ -1000,7 +999,7 @@ Catalog entries are curated server-side metadata and do not expose code. If a so
 | Method | Path | Purpose |
 |---|---|---|
 | `POST` | `/systems` | Create a system from a catalog entry, JSON case study, or `.py` upload |
-| `GET` | `/systems` | List persisted systems (`limit`, `offset`, optional `source_type`) |
+| `GET` | `/systems` | List persisted systems (`limit`, `offset`, optional `source_type`, optional `source_ref`) |
 | `GET` | `/systems/{system_id}` | Get canonical metadata |
 | `DELETE` | `/systems/{system_id}` | Delete system, its runs/jobs, and unreferenced code artifacts |
 
@@ -1449,12 +1448,9 @@ All errors use one envelope:
 ```
 /                          → redirect to /systems
 /systems                   → catalog + upload
-/systems/:systemId         → workspace (defaults to Manual tab)
-/systems/:systemId/manual  → manual simulation tab
-/systems/:systemId/auto    → auto-tune tab
-/systems/:systemId/history → persisted run history
+/systems/:systemId         → workspace (redirects to the manual tab)
+/systems/:systemId/:tab    → workspace tab: manual, auto, or history
 /runs/:runId               → persisted run detail (simulation or optimization)
-/jobs/:jobId               → job detail (optional; can be inline)
 ```
 
 The selected system and tab are reflected in the URL so results are shareable and refresh-safe.
@@ -1515,15 +1511,21 @@ App
 
 - **Server state:** TanStack Query hooks:
   - `useCatalog()`
+  - `useSystems()`
   - `useSystem(systemId)`
   - `useSchema(systemId, controllerType)`
-  - `useSimulate()` mutation
-  - `useOptimize()` mutation
+  - `useCreateSystem()` mutation
+  - `useDeleteSystem()` mutation
+  - `useSimulate(systemId)` mutation
+  - `useOptimize(systemId)` mutation
+  - `useEnqueueOptimize(systemId)` async mutation
   - `useSystemRuns(systemId, type)` history list with pagination
+  - `useOptimizationRuns(systemId)` history convenience hook
   - `useRun(runId)` persisted run detail
   - `useJob(jobId)` with polling fallback
+  - `useCancelJob(jobId)` mutation
   - `useJobEvents(jobId)` SSE hook
-  - `useDeleteRun(runId)` cache invalidation
+  - `useDeleteRun(systemId)` cache invalidation
 - **Form state:** React Hook Form; Zod schemas mirror the backend Pydantic constraints.
 - **Local UI state:** selected tab, advanced settings visibility, chart toggles.
 - **No global client-state library** is required for the MVP.
@@ -1547,7 +1549,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 ```
 
-- `VITE_API_URL` is the only environment-specific setting. Development: `http://localhost:8000/api/v1`. Production: `/api/v1` (same origin via nginx).
+- `VITE_API_URL` is the only build-time setting. Development: `http://localhost:${API_PORT}/api/v1` (the dev script selects a free port, default `8000`). Production: `/api/v1` (same origin via nginx).
 - Types in `src/types/` mirror the OpenAPI schema; optionally generate them with `openapi-typescript` in CI.
 
 ### 8.6 UX requirements
@@ -1601,7 +1603,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U tuner -d controller_tuner"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
 
   redis:
     image: redis:7-alpine
@@ -1612,7 +1614,7 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
-      retries: 10
+      retries: 20
 
   migrate:
     build:
@@ -1641,9 +1643,15 @@ services:
       ARTIFACT_BACKEND: local
       CORS_ORIGINS: ""
       MAX_UPLOAD_BYTES: "262144"
+      MAX_REQUEST_BYTES: "1048576"
       SYSTEM_TTL_SECONDS: "86400"
       JOB_RETENTION_SECONDS: "3600"
+      RUN_RETENTION_DAYS: "30"
+      GA_QUEUE_MAX_DEPTH: "20"
+      GA_TASK_SOFT_TIME_LIMIT: "180"
+      GA_TASK_TIME_LIMIT: "240"
       MAX_CONCURRENT_GA_JOBS: "1"
+      PERSIST_TRAJECTORIES: "true"
     volumes:
       - artifacts_data:/data/artifacts
     depends_on:
@@ -1654,26 +1662,22 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/v1/health"]
-      interval: 10s
-      timeout: 3s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
       retries: 5
     ports:
-      - "8000:8000"
+      - "${API_PORT:-8000}:8000"
 
   worker:
     build:
       context: .
       dockerfile: backend/docker/worker.Dockerfile
     command:
-      - celery
-      - -A
-      - app.workers.celery_app
-      - worker
-      - -Q
-      - ga,maintenance
-      - --concurrency=${MAX_CONCURRENT_GA_JOBS:-1}
-      - --loglevel=INFO
+      - sh
+      - -c
+      - celery -A app.workers.celery_app:celery_app worker -Q ga,maintenance --loglevel=INFO --concurrency=${MAX_CONCURRENT_GA_JOBS:-1}
     environment:
       DATABASE_URL: postgresql+psycopg://tuner:${POSTGRES_PASSWORD}@postgres:5432/controller_tuner
       REDIS_URL: redis://redis:6379/0
@@ -1698,7 +1702,14 @@ services:
     build:
       context: .
       dockerfile: backend/docker/worker.Dockerfile
-    command: ["celery", "-A", "app.workers.celery_app", "beat", "--loglevel=INFO"]
+    command:
+      - celery
+      - -A
+      - app.workers.celery_app:celery_app
+      - beat
+      - --loglevel=INFO
+      - --pidfile=/tmp/celerybeat.pid
+      - --schedule=/tmp/celerybeat-schedule
     environment:
       DATABASE_URL: postgresql+psycopg://tuner:${POSTGRES_PASSWORD}@postgres:5432/controller_tuner
       REDIS_URL: redis://redis:6379/0
@@ -1717,13 +1728,14 @@ services:
   frontend:
     build:
       context: ./frontend
+      dockerfile: Dockerfile
       args:
         VITE_API_URL: /api/v1
     depends_on:
       backend:
         condition: service_healthy
     ports:
-      - "3000:80"
+      - "${UI_PORT:-3000}:80"
 
 volumes:
   postgres_data:
@@ -1737,39 +1749,44 @@ volumes:
 
 - Base: `python:3.12-slim` (both engines require Python 3.10+).
 - Install pinned requirements from `backend/requirements.txt`.
-- Copy the umbrella backend plus the two read-only engine repositories into `/app/engines/`.
-- Set `PYTHONPATH=/app` and engine paths via environment.
-- Run as a non-root user with a writable artifact volume.
-- Run `uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-1}`. The API can scale beyond one worker because state lives in PostgreSQL/Redis; keep the default at 1 until load-tested.
-- API and worker share the same code image but use different entrypoints.
+- Copy the entire backend plus the two read-only engine repositories into `/app/engines/`.
+- Set engine paths via environment (`GA_ENGINE_REPO`, `MANUAL_ENGINE_REPO`) and the shared artifact directory (`ARTIFACT_DIR=/data/artifacts`).
+- Run as non-root uid `10001` with a writable artifact volume.
+- The current API command runs a single Uvicorn process. `UVICORN_WORKERS` is a setting but is not wired into the container command; keep one process until load-tested.
+- API and worker use separate Dockerfiles but the same application code and dependencies.
 
-Example Dockerfile outline:
+Actual Dockerfile outline:
 
 ```dockerfile
-FROM python:3.12-slim AS runtime
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PYTHONPATH=/app
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    GA_ENGINE_REPO=/app/engines/gaTunerPID \
+    MANUAL_ENGINE_REPO=/app/engines/tunerPID \
+    ARTIFACT_DIR=/data/artifacts
+
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/*
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend /app
+COPY engines/gaTunerPID /app/engines/gaTunerPID
+COPY engines/tunerPID /app/engines/tunerPID
 
-COPY backend/app ./app
-COPY backend/alembic ./alembic
-COPY backend/alembic.ini ./alembic.ini
-COPY backend/scripts ./scripts
-COPY backend/docker ./docker
-COPY engines/gaTunerPID ./engines/gaTunerPID
-COPY engines/tunerPID ./engines/tunerPID
+RUN useradd --create-home --uid 10001 app \
+    && mkdir -p /data/artifacts \
+    && chown -R app:app /app /data
 
-RUN useradd --create-home --uid 10001 appuser \
-    && mkdir -p /data/artifacts && chown -R appuser:appuser /app /data
-USER appuser
+USER app
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 ### 9.3 Worker image
@@ -1786,8 +1803,8 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--worker
 
 - Multi-stage: `node:20-alpine` build, `nginx:alpine` runtime.
 - Build with `VITE_API_URL=/api/v1`.
-- Nginx serves the SPA and proxies `/api/` to `http://backend:8000/api/`.
-- No hard-coded container IPs; service DNS names are used.
+- Nginx serves the SPA and proxies `/api/` to `http://backend:8000`.
+- Resolve the backend through Docker's DNS resolver at request time so nginx survives container recreation.
 
 ```nginx
 server {
@@ -1796,12 +1813,23 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    client_max_body_size 300k;
+
+    resolver 127.0.0.11 valid=10s ipv6=off;
+    set $backend_upstream http://backend:8000;
+
     location /api/ {
-        proxy_pass http://backend:8000/api/;
+        proxy_pass $backend_upstream;
+        proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
-        proxy_read_timeout 300s;
-        proxy_buffering off;  # required for SSE
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
     }
 
     location / {
@@ -1849,11 +1877,11 @@ Production and development share the same engine paths, env variable names, and 
 |---|---|---|---|
 | Contract | Engine behavior untouched | pytest, NumPy assertions | Seeded BallBeam outputs match golden snapshots |
 | Unit | Adapters, normalizers, validators, repositories | pytest | JSON serialization, metric `null` handling, AST denylist, repository queries |
-| Integration | FastAPI + PostgreSQL + Redis + real engines (tiny configs) | pytest + `TestClient`/`httpx`, testcontainers | Create system → simulate → optimize with pop 5/gens 2; history survives restart |
-| Migration | Alembic schema and upgrade path | pytest + testcontainers | `alembic upgrade head` from empty DB; downgrade/upgrade smoke |
+| Integration | FastAPI + PostgreSQL + Redis + real engines (tiny configs) | pytest + `TestClient`/`httpx`, Docker test fixtures | Create system → simulate → optimize with pop 5/gens 2; history survives restart |
+| Migration | Alembic schema and upgrade path | pytest + Docker test fixtures | `alembic upgrade head` from empty DB; downgrade/upgrade smoke |
 | Frontend unit | Components and hooks | Vitest + RTL + MSW | GainSchema renders sliders, error banner on 500, loading states |
 | E2E | Full happy path | Playwright (optional) or API smoke script | Load BallBeam → simulate → optimize → export → reopen from history |
-| Docker smoke | Build and run full stack | shell/CI | `./scripts/up.sh`, then run `scripts/e2e_smoke.py` |
+| Docker smoke | Build and run full stack | shell/CI | `./scripts/up.sh`, then run `python3 scripts/e2e_smoke.py` |
 
 ### 10.2 Engine contract tests
 
@@ -1931,32 +1959,34 @@ jobs:
     services:
       postgres:
         image: postgres:16-alpine
-        env: { POSTGRES_DB: test, POSTGRES_USER: test, POSTGRES_PASSWORD: test }
+        env: { POSTGRES_USER: tuner, POSTGRES_PASSWORD: tuner, POSTGRES_DB: controller_tuner_test }
       redis:
         image: redis:7-alpine
     steps:
-      - ruff check backend
-      - mypy backend/app (optional)
-      - alembic -c backend/alembic.ini upgrade head
-      - pytest backend/tests --cov=backend/app --cov-fail-under=80
+      - python scripts/verify_engines.py
+      - pip install -r backend/requirements.txt
+      - pip install pytest==9.2.0 pytest-cov==7.0.0 coverage[toml]==7.11.0 ruff==0.17.3 httpx==0.28.1
+      - ruff check app tests alembic && ruff format --check app tests alembic  # in backend/
+      - alembic upgrade head  # in backend/
+      - pytest -q --cov=app --cov-fail-under=80  # in backend/
   frontend:
     steps:
       - npm ci
-      - npm run lint
-      - npm run test -- --run
+      - npx tsc --noEmit
+      - npm test
       - npm run build
-  docker:
+  compose:
     steps:
-      - docker compose build
-      - docker compose up -d
-      - wait for /api/v1/ready
+      - docker compose config >/dev/null
+      - docker compose up -d --build --wait --wait-timeout 300
       - python scripts/e2e_smoke.py
+      - verify http://localhost:3000/api/v1/health through the nginx proxy
       - docker compose down -v
 ```
 
 The coverage threshold applies to the integration code (`backend/app`), not to the read-only engines. Engine behavior is protected by contract tests.
 
-Integration tests run against real PostgreSQL and Redis containers (or `pytest-postgresql` + `fakeredis` for fast unit-level coverage). Each test transaction is rolled back or the schema is truncated between tests. Migrations are applied once per session; a dedicated migration test applies every revision from an empty database. Artifact storage is tested with a temporary local directory and, optionally, a MinIO container.
+Integration tests use real PostgreSQL and Redis. Locally, pytest starts disposable Docker containers for them automatically; set `TEST_SKIP_DOCKER_FIXTURES=1` to use externally provided services (CI does this with GitHub service containers). Each test transaction is rolled back or the schema is truncated between tests. Migrations are applied once per session; a dedicated migration test applies every revision from an empty database. Artifact storage is tested with a temporary local directory.
 
 ---
 

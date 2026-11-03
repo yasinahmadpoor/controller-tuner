@@ -31,11 +31,12 @@ Upgrade deliberately:
    git add engines/gaTunerPID engines/tunerPID
    ```
 
-2. Run `python scripts/verify_engines.py` to see exactly which tracked files changed.
+2. Run `python3 scripts/verify_engines.py` to see exactly which tracked files changed.
 3. Update `scripts/engine_sources.sha256` only after reviewing the diff:
-   `python scripts/verify_engines.py --write`.
+   `python3 scripts/verify_engines.py --write`.
 4. Run the contract tests (`backend/tests/contract`) and inspect differences.
 5. Regenerate golden snapshots intentionally:
-   `python scripts/baseline.py`.
+   `python3 scripts/baseline.py`.
 6. Review golden diffs and run the full backend + frontend suites.
-7. Rebuild Compose images and run `scripts/e2e_smoke.py`.
+7. Restart the stack with `./scripts/up.sh`, then run
+   `python3 scripts/e2e_smoke.py` against the running API.

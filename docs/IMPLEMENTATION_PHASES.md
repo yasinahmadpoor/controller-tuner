@@ -67,7 +67,7 @@ A phase is not complete until:
 
 - [ ] Code builds and runs locally.
 - [ ] New behavior has automated tests.
-- [ ] `ruff` passes for backend changes; `npm run lint` passes for frontend changes.
+- [ ] `ruff` passes for backend changes; `npx tsc --noEmit`, `npm test`, and `npm run build` pass for frontend changes.
 - [ ] No engine source files changed (`git diff` shows nothing under `gaTunerPID/src/`, `tunerPID/src/`).
 - [ ] API changes are reflected in Pydantic models and the frontend types.
 - [ ] Schema changes include an Alembic migration and are tested against an empty database.
@@ -129,7 +129,7 @@ A phase is not complete until:
 
 ### Work items
 
-- [ ] Create `backend/pyproject.toml` and pinned `requirements.txt` / `requirements-dev.txt`.
+- [ ] Create `backend/pyproject.toml` with pinned runtime dependencies in `requirements.txt` and test/lint tools in the `dev` optional-dependency group.
 - [ ] Implement `app/main.py` with an app factory.
 - [ ] Implement `app/core/config.py` using `pydantic-settings`:
   - [ ] `APP_ENV`, `LOG_LEVEL`
@@ -750,8 +750,8 @@ A phase is not complete until:
 - [ ] Add CI workflow:
   - [ ] Postgres 16 and Redis 7 service containers.
   - [ ] `alembic upgrade head` before integration tests.
-  - [ ] Backend lint, type check, tests, coverage threshold.
-  - [ ] Frontend lint, tests, build.
+  - [ ] Backend lint, tests, coverage threshold.
+  - [ ] Frontend type check, tests, build.
   - [ ] Docker build, Compose up, and smoke test.
   - [ ] Engine integrity check.
 - [ ] Add `scripts/verify_engines.py` to CI to prove the engines are unchanged.
@@ -911,7 +911,7 @@ Use this script for milestone reviews and the final handoff.
 9. **Persistence check:**
 
    ```bash
-   docker compose exec postgres psql -U tuner -d tuner -c \
+   docker compose exec postgres psql -U tuner -d controller_tuner -c \
      "select count(*) from systems; select count(*) from optimization_runs;"
    ```
 
@@ -968,7 +968,7 @@ Branch: ____
 [ ] Integration tests added and passing (real Postgres/Redis)
 [ ] Contract tests passing (if engines involved)
 [ ] Alembic migration added and tested from an empty DB
-[ ] ruff / npm run lint clean
+[ ] ruff / tsc / frontend tests / build clean
 [ ] No changes under gaTunerPID/src or tunerPID/src
 [ ] API docs / frontend types updated
 [ ] Acceptance criteria demonstrated

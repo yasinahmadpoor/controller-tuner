@@ -15,8 +15,8 @@ API=http://localhost:8000/api/v1
 
 ```bash
 curl -s $API/health
-curl -s $API/ready | python -m json.tool
-curl -s $API/catalog | python -m json.tool
+curl -s $API/ready | python3 -m json.tool
+curl -s $API/catalog | python3 -m json.tool
 ```
 
 ## Create a system from the catalog
@@ -25,13 +25,13 @@ curl -s $API/catalog | python -m json.tool
 SYSTEM_ID=$(curl -s -X POST $API/systems \
   -H 'Content-Type: application/json' \
   -d '{"source":{"type":"catalog","catalog_id":"ball_beam"}}' \
-  | python -c 'import json,sys; print(json.load(sys.stdin)["system_id"])')
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["system_id"])')
 ```
 
 ## Manual simulation
 
 ```bash
-curl -s $API/systems/$SYSTEM_ID/schema?controller_type=PID | python -m json.tool
+curl -s $API/systems/$SYSTEM_ID/schema?controller_type=PID | python3 -m json.tool
 
 curl -s -X POST $API/systems/$SYSTEM_ID/simulate \
   -H 'Content-Type: application/json' \
@@ -39,7 +39,7 @@ curl -s -X POST $API/systems/$SYSTEM_ID/simulate \
     "controller_type":"PID",
     "params":{"Kp":15.0,"Ki":0.5,"Kd":2.0},
     "overrides":{"dt":0.01,"max_time":1.0}
-  }' | python -m json.tool
+  }' | python3 -m json.tool
 ```
 
 Reopen persisted runs:
@@ -55,7 +55,7 @@ curl -s "$API/simulations/<run_id>?include_artifacts=true"
 curl -s -X POST $API/systems/$SYSTEM_ID/optimize \
   -H 'Content-Type: application/json' \
   -d '{"ga_config":{"population_size":5,"generations":2,"seed":42,"max_wall_clock":30}}' \
-  | python -m json.tool
+  | python3 -m json.tool
 ```
 
 ## Asynchronous GA optimization
@@ -66,13 +66,13 @@ curl -s -X POST $API/systems/$SYSTEM_ID/optimize \
   -d '{
     "async":true,
     "ga_config":{"population_size":5,"generations":2,"seed":42,"max_wall_clock":30}
-  }' | python -m json.tool
+  }' | python3 -m json.tool
 ```
 
 Poll:
 
 ```bash
-curl -s $API/jobs/<job_id> | python -m json.tool
+curl -s $API/jobs/<job_id> | python3 -m json.tool
 ```
 
 Stream progress with SSE (`-N` disables buffering):
@@ -90,7 +90,7 @@ curl -N -H 'Last-Event-ID: 1793646200353-1' $API/jobs/<job_id>/events
 Cancel (idempotent while active):
 
 ```bash
-curl -s -X POST $API/jobs/<job_id>/cancel | python -m json.tool
+curl -s -X POST $API/jobs/<job_id>/cancel | python3 -m json.tool
 ```
 
 ## Errors

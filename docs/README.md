@@ -13,6 +13,9 @@ Both repositories are treated as **read-only**. The new platform adds a FastAPI 
 |---|---|
 | [`ARCHITECTURE.md`](./ARCHITECTURE.md) | Target architecture, engine integration strategy, canonical domain model, API contracts, frontend design, Docker/deployment, testing, security, risks, and ADRs |
 | [`IMPLEMENTATION_PHASES.md`](./IMPLEMENTATION_PHASES.md) | Phased delivery plan with work items, deliverables, acceptance criteria, tests, estimates, milestones, and a demo script |
+| [`API_EXAMPLES.md`](./API_EXAMPLES.md) | Copy-paste `curl` examples for catalog, systems, simulations, optimizations, jobs, and SSE |
+| [`OPERATIONS.md`](./OPERATIONS.md) | Backups, migrations, queue recovery, retention, readiness, and troubleshooting |
+| [`UPGRADING_ENGINES.md`](./UPGRADING_ENGINES.md) | Adding case studies and upgrading the read-only engine submodules |
 
 ## Key decisions in one page
 

@@ -2,7 +2,9 @@
 
 ## Backups
 
-PostgreSQL is the system of record. Back up it plus the artifact volume.
+PostgreSQL is the system of record. Back up it plus the artifact volume. The commands
+below target the production Compose project (`controller-tuner`); if you are operating
+the dev stack, add `-p controller-tuner-dev` and use the corresponding dev volume names.
 
 ```bash
 docker compose exec -T postgres pg_dump -U tuner -d controller_tuner -Fc > controller_tuner.dump
@@ -53,6 +55,7 @@ docker compose start worker beat
 docker compose exec worker celery -A app.workers.celery_app:celery_app call app.workers.maintenance.cleanup_terminal_jobs
 docker compose exec worker celery -A app.workers.celery_app:celery_app call app.workers.maintenance.cleanup_expired_runs
 docker compose exec worker celery -A app.workers.celery_app:celery_app call app.workers.maintenance.cleanup_orphan_artifacts
+docker compose exec worker celery -A app.workers.celery_app:celery_app call app.workers.maintenance.delete_expired_systems
 ```
 
 ## Readiness and logs
